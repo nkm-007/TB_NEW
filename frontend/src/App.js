@@ -1,28 +1,25 @@
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Link,
-  useNavigate,
-} from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
+import FindBuddy from "./pages/FindBuddy";
+import Chat from "./pages/Chat";
 import "./App.css";
 
 function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
 
-  // Check login state from localStorage
   useEffect(() => {
-    const user = localStorage.getItem("user");
-    setIsLoggedIn(!!user);
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
   }, []);
 
   const handleLogout = () => {
+    localStorage.removeItem("token");
     localStorage.removeItem("user");
     setIsLoggedIn(false);
     navigate("/");
@@ -47,18 +44,18 @@ function Navbar() {
           </button>
         ) : (
           <>
-            <Link
-              to="/login"
+            <button
+              onClick={() => navigate("/login")}
               className="hover:underline px-3 py-1 border border-white rounded-md sm:px-4"
             >
               Login
-            </Link>
-            <Link
-              to="/signup"
+            </button>
+            <button
+              onClick={() => navigate("/signup")}
               className="hover:underline px-3 py-1 border border-white rounded-md sm:px-4"
             >
               Signup
-            </Link>
+            </button>
           </>
         )}
       </div>
@@ -75,7 +72,10 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/find-buddy" element={<FindBuddy />} />
+          <Route path="/chat/:roomId" element={<Chat />} />
         </Routes>
       </div>
     </BrowserRouter>

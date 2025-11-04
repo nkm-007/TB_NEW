@@ -1,72 +1,131 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import ProfilePopup from "../components/ProfilePopup";
+import API from "../services/api";
 
 export default function Dashboard() {
   const [showPopup, setShowPopup] = useState(false);
   const [user, setUser] = useState(null);
+  const [availableForTea, setAvailableForTea] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user"));
     setUser(userData);
 
-    // only show popup if signed up (flag stored in localStorage)
-    if (userData?.isNewUser) {
+    // Show profile popup for new users or incomplete profiles
+    if (userData?.isNewUser || !userData?.profileCompleted) {
       setShowPopup(true);
     }
+
+    setAvailableForTea(userData?.availableForTea || false);
   }, []);
 
-  const handleSubmitProfile = () => {
-    // store user profile (you can integrate Firestore here)
+  const handleProfileComplete = (updatedUser) => {
     setShowPopup(false);
-    const userData = { ...user, isNewUser: false };
-    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+  };
+
+  const handleToggleAvailability = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please login again");
+      navigate("/login");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data } = await API.put(
+        "/profile/toggle-availability",
+        { availableForTea: !availableForTea },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setAvailableForTea(data.availableForTea);
+
+      const updatedUser = { ...user, availableForTea: data.availableForTea };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      alert(
+        data.availableForTea
+          ? "You're now available for tea! ☕"
+          : "You're now unavailable"
+      );
+    } catch (err) {
+      console.error("Toggle availability error:", err);
+      alert("Failed to update availability");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFindBuddy = () => {
+    if (!user?.profileCompleted) {
+      alert("Please complete your profile first");
+      setShowPopup(true);
+      return;
+    }
+    navigate("/find-buddy");
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-4">
       <h2 className="text-3xl font-bold mb-4">Dashboard</h2>
-      <p className="text-gray-400">You are now logged in to TeaChat ☕</p>
 
-      {showPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
-          <div className="bg-gray-900 p-6 rounded-lg w-11/12 max-w-md text-left">
-            <h3 className="text-lg mb-4 font-semibold">
-              Complete your profile
-            </h3>
-
-            <form className="space-y-3">
-              <input
-                type="text"
-                placeholder="Your Name"
-                className="w-full p-2 bg-black border border-gray-600 rounded"
-              />
-
-              <select className="w-full p-2 bg-black border border-gray-600 rounded">
-                <option>Businessman</option>
-                <option>Student</option>
-                <option>Corporate</option>
-                <option>Freelancer</option>
-                <option>Artist</option>
-              </select>
-
-              <select className="w-full p-2 bg-black border border-gray-600 rounded">
-                <option>Movies</option>
-                <option>Sports</option>
-                <option>Technology</option>
-                <option>Travel</option>
-                <option>Music</option>
-                <option>Food</option>
-              </select>
-
-              <button
-                type="button"
-                onClick={handleSubmitProfile}
-                className="w-full bg-white text-black p-2 rounded font-semibold hover:bg-gray-300"
-              >
-                Save
-              </button>
-            </form>
-          </div>
+      {user && (
+        <div className="mb-6 text-center">
+          <p className="text-gray-400">Welcome, {user.name || user.phone}!</p>
+          {user.interest && (
+            <p className="text-sm text-gray-500">
+              Interested in: {user.interest}
+            </p>
+          )}
         </div>
+      )}
+
+      {/* Availability Toggle */}
+      <div className="mb-8">
+        <label className="flex items-center space-x-3 cursor-pointer">
+          <span className="text-lg">Available for Tea Break?</span>
+          <div className="relative">
+            <input
+              type="checkbox"
+              checked={availableForTea}
+              onChange={handleToggleAvailability}
+              disabled={loading}
+              className="sr-only peer"
+            />
+            <div className="w-14 h-8 bg-gray-700 rounded-full peer peer-checked:bg-green-500 transition-colors"></div>
+            <div className="absolute left-1 top-1 w-6 h-6 bg-white rounded-full transition-transform peer-checked:translate-x-6"></div>
+          </div>
+        </label>
+      </div>
+
+      {/* Find Buddy Button */}
+      <button
+        onClick={handleFindBuddy}
+        disabled={!user?.profileCompleted}
+        className="px-8 py-3 bg-white text-black rounded-lg font-semibold text-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+      >
+        Find Tea Buddy ☕
+      </button>
+
+      {!user?.profileCompleted && (
+        <p className="text-sm text-red-400">
+          Complete your profile to find buddies
+        </p>
+      )}
+
+      {/* Profile Popup */}
+      {showPopup && (
+        <ProfilePopup
+          onClose={() => setShowPopup(false)}
+          onComplete={handleProfileComplete}
+        />
       )}
     </div>
   );
