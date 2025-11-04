@@ -5,4 +5,4 @@ backend/node_modules/
 frontend/node_modules/
 # .env files (contains sensitive data like API keys)
 .env
-config/serviceAccountKey.json
+backend/config/serviceAccountKey.json
