@@ -4,6 +4,7 @@ import API from "../services/api";
 
 export default function FindBuddy() {
   const [interest, setInterest] = useState("");
+  const [tempComment, setTempComment] = useState(""); // Temporary comment, not saved
   const [location, setLocation] = useState(null);
   const [finding, setFinding] = useState(false);
   const [matchedUsers, setMatchedUsers] = useState([]);
@@ -63,11 +64,17 @@ export default function FindBuddy() {
       const loc = await getLocation();
       setLocation(loc);
 
-      // Update location on backend
       const token = localStorage.getItem("token");
+
+      // Update location AND temporary comment on backend
+      // Comment is sent but only for this search session
       await API.put(
         "/profile/update-location",
-        { longitude: loc.longitude, latitude: loc.latitude },
+        {
+          longitude: loc.longitude,
+          latitude: loc.latitude,
+          availabilityComment: tempComment, // Send temporary comment
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -107,7 +114,7 @@ export default function FindBuddy() {
         <h1 className="text-3xl font-bold mb-6">Find Tea Buddy ☕</h1>
 
         {/* Interest Selection */}
-        <div className="mb-6">
+        <div className="mb-4">
           <label className="block mb-2 text-lg">
             What do you want to talk about?
           </label>
@@ -123,6 +130,30 @@ export default function FindBuddy() {
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Temporary Comment Box - Only for this search */}
+        <div className="mb-6">
+          <label className="block mb-2 text-sm text-gray-400">
+            Optional: Add context for this search (e.g., "Just watched Dune 2!"
+            or "Want to discuss IPL")
+          </label>
+          <textarea
+            value={tempComment}
+            onChange={(e) => setTempComment(e.target.value)}
+            maxLength={150}
+            placeholder="What specifically do you want to discuss? (optional)"
+            rows="3"
+            className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-white resize-none"
+          />
+          <div className="flex justify-between items-center mt-1">
+            <p className="text-xs text-gray-500">
+              {tempComment.length}/150 characters
+            </p>
+            <p className="text-xs text-yellow-500">
+              ℹ️ This comment is temporary and only visible during this search
+            </p>
+          </div>
         </div>
 
         {/* Find Button */}
@@ -147,23 +178,32 @@ export default function FindBuddy() {
                   {matchedUsers.map((user) => (
                     <div
                       key={user._id}
-                      className="bg-gray-900 p-4 rounded-lg border border-green-500 flex justify-between items-center hover:bg-gray-800 transition"
+                      className="bg-gray-900 p-4 rounded-lg border border-green-500 hover:bg-gray-800 transition"
                     >
-                      <div>
-                        <p className="font-semibold text-lg">{user.name}</p>
-                        <p className="text-sm text-gray-400">
-                          {user.profession}
-                        </p>
-                        <p className="text-sm text-green-400">
-                          💬 {user.interest}
-                        </p>
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <p className="font-semibold text-lg">{user.name}</p>
+                          <p className="text-sm text-gray-400">
+                            {user.profession}
+                          </p>
+                          <p className="text-sm text-green-400">
+                            💬 {user.interest}
+                          </p>
+                          {user.availabilityComment && (
+                            <div className="mt-2 p-2 bg-gray-800 rounded border-l-2 border-green-500">
+                              <p className="text-sm text-gray-300 italic">
+                                "{user.availabilityComment}"
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleSelectBuddy(user)}
+                          className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition whitespace-nowrap ml-4"
+                        >
+                          Chat ✓
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleSelectBuddy(user)}
-                        className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
-                      >
-                        Chat ✓
-                      </button>
                     </div>
                   ))}
                 </div>
@@ -180,23 +220,32 @@ export default function FindBuddy() {
                   {otherUsers.map((user) => (
                     <div
                       key={user._id}
-                      className="bg-gray-900 p-4 rounded-lg border border-gray-700 flex justify-between items-center hover:bg-gray-800 transition"
+                      className="bg-gray-900 p-4 rounded-lg border border-gray-700 hover:bg-gray-800 transition"
                     >
-                      <div>
-                        <p className="font-semibold text-lg">{user.name}</p>
-                        <p className="text-sm text-gray-400">
-                          {user.profession}
-                        </p>
-                        <p className="text-sm text-blue-400">
-                          💬 {user.interest}
-                        </p>
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <p className="font-semibold text-lg">{user.name}</p>
+                          <p className="text-sm text-gray-400">
+                            {user.profession}
+                          </p>
+                          <p className="text-sm text-blue-400">
+                            💬 {user.interest}
+                          </p>
+                          {user.availabilityComment && (
+                            <div className="mt-2 p-2 bg-gray-800 rounded border-l-2 border-blue-500">
+                              <p className="text-sm text-gray-300 italic">
+                                "{user.availabilityComment}"
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleSelectBuddy(user)}
+                          className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition whitespace-nowrap ml-4"
+                        >
+                          Chat ✓
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleSelectBuddy(user)}
-                        className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-                      >
-                        Chat ✓
-                      </button>
                     </div>
                   ))}
                 </div>

@@ -47,6 +47,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/auth.js";
 import profileRoutes from "./routes/profile.js";
 import buddyRoutes from "./routes/buddy.js";
+import chatRoutes from "./routes/chat.js";
 import { setupSocket } from "./utils/socketHandler.js";
 import { startMessageCleanup } from "./utils/messageCleanup.js";
 
@@ -73,6 +74,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/buddy", buddyRoutes);
+app.use("/api/chat", chatRoutes);
 
 // Health check
 app.get("/", (req, res) => {

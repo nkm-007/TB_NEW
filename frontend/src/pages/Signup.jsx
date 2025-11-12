@@ -175,6 +175,10 @@ export default function Signup() {
       );
 
       alert("Signup successful!");
+
+      // Trigger auth change event for navbar update
+      window.dispatchEvent(new Event("auth-change"));
+
       navigate("/dashboard");
     } catch (err) {
       console.error("Verification error:", err);

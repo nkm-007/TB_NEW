@@ -74,6 +74,10 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(data.user));
 
       alert("Login successful!");
+
+      // Trigger auth change event for navbar update
+      window.dispatchEvent(new Event("auth-change"));
+
       navigate("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
