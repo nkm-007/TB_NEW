@@ -1,0 +1,4 @@
+echo "backend/config/serviceAccountKey.json" >> .gitignore
+git add .gitignore
+git commit -m "Ignore serviceAccountKey.json"
+git push origin main
