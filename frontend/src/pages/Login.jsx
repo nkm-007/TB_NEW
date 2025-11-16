@@ -50,23 +50,21 @@ import API from "../services/api";
 import { useNavigate, Link } from "react-router-dom";
 
 export default function Login() {
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-    if (!phone || !password) {
-      alert("Please enter phone number and password");
+    if (!email || !password) {
+      alert("Please enter email and password");
       return;
     }
-
-    const formattedPhone = phone.startsWith("+91") ? phone : `+91${phone}`;
 
     setLoading(true);
     try {
       const { data } = await API.post("/auth/login", {
-        phone: formattedPhone,
+        email,
         password,
       });
 
@@ -92,9 +90,10 @@ export default function Login() {
       <h1 className="text-3xl mb-6 font-semibold">Login</h1>
       <div className="w-80">
         <input
-          placeholder="Phone number (10 digits)"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          placeholder="Email address"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           className="w-full mb-4 p-2 bg-gray-900 border border-gray-700 rounded"
         />
         <input

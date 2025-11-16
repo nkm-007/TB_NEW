@@ -17,7 +17,7 @@ export const getMyChatRooms = async (req, res) => {
       participants: currentUserId,
     })
       .sort({ lastMessageTime: -1 })
-      .populate("participants", "name profession interest");
+      .populate("participants", "name profession professionDetails interest");
 
     // Get unread count and last message for each room
     const chatRoomsWithDetails = await Promise.all(
@@ -45,6 +45,7 @@ export const getMyChatRooms = async (req, res) => {
             _id: otherUser._id,
             name: otherUser.name,
             profession: otherUser.profession,
+            professionDetails: otherUser.professionDetails,
             interest: otherUser.interest,
           },
           unreadCount,

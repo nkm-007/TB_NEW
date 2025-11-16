@@ -1,15 +1,23 @@
 // import express from "express";
-// import { signup, verifyOtp, login } from "../controllers/authController.js";
+// import {
+//   signup,
+//   login,
+//   forgotPassword,
+//   resetPassword,
+// } from "../controllers/authController.js";
+
 // const router = express.Router();
 
 // router.post("/signup", signup);
-// router.post("/verify-otp", verifyOtp);
 // router.post("/login", login);
+// router.post("/forgot-password", forgotPassword);
+// router.post("/reset-password", resetPassword);
 
 // export default router;
 import express from "express";
 import {
-  signup,
+  sendOTP,
+  verifyAndSignup,
   login,
   forgotPassword,
   resetPassword,
@@ -17,7 +25,8 @@ import {
 
 const router = express.Router();
 
-router.post("/signup", signup);
+router.post("/send-otp", sendOTP);
+router.post("/verify-signup", verifyAndSignup);
 router.post("/login", login);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);

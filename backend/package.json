@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@sendinblue/client": "^3.3.1",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -20,7 +21,7 @@
     "mongodb": "^6.20.0",
     "mongoose": "^8.19.1",
     "node-cron": "^4.2.1",
-    "nodemailer": "^7.0.9",
+    "nodemailer": "^7.0.10",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

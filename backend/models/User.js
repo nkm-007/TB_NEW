@@ -22,6 +22,8 @@
 
 //   // Availability status
 //   availableForTea: { type: Boolean, default: false },
+//   availabilityComment: { type: String, maxlength: 150, default: "" },
+//   availabilityCommentUpdatedAt: { type: Date },
 //   lastActive: { type: Date, default: Date.now },
 
 //   // Profile completion
@@ -41,10 +43,11 @@
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
-  phone: { type: String, unique: true, required: true },
+  email: { type: String, unique: true, required: true },
   password: { type: String, required: true },
   name: { type: String },
   profession: { type: String },
+  professionDetails: { type: String }, // Company name, college, etc.
   interest: { type: String },
 
   // Location fields for geospatial queries
@@ -63,6 +66,7 @@ const userSchema = new mongoose.Schema({
   // Availability status
   availableForTea: { type: Boolean, default: false },
   availabilityComment: { type: String, maxlength: 150, default: "" },
+  availabilityCommentUpdatedAt: { type: Date },
   lastActive: { type: Date, default: Date.now },
 
   // Profile completion
