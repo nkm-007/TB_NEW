@@ -20,7 +20,6 @@ import express from "express";
 import {
   saveProfile,
   getProfile,
-  updatePhone,
   toggleAvailability,
   updateLocation,
   updateAvailabilityComment,
@@ -30,7 +29,7 @@ const router = express.Router();
 
 router.post("/save", saveProfile);
 router.get("/me", getProfile);
-router.put("/update-phone", updatePhone);
+//router.put("/update-phone", updatePhone);
 router.put("/toggle-availability", toggleAvailability);
 router.put("/update-location", updateLocation);
 router.put("/update-comment", updateAvailabilityComment);
