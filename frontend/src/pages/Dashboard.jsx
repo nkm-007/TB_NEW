@@ -292,7 +292,7 @@ export default function Dashboard() {
                   }`}
                 >
                   <div
-                    className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                    className={`absolute top-2 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${
                       availableForTea ? "transform translate-x-8" : ""
                     }`}
                   ></div>

@@ -10,10 +10,13 @@ class SocketService {
   connect(token) {
     if (!this.socket) {
       this.socket = io(SOCKET_URL, {
-        autoConnect: false,
+        autoConnect: true,
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 5,
+        transports: ["websocket", "polling"],
       });
 
-      this.socket.connect();
       this.socket.emit("authenticate", token);
 
       this.socket.on("connect", () => {
@@ -22,6 +25,10 @@ class SocketService {
 
       this.socket.on("disconnect", () => {
         console.log("Disconnected from socket server");
+      });
+
+      this.socket.on("connect_error", (error) => {
+        console.error("Connection error:", error);
       });
     }
     return this.socket;

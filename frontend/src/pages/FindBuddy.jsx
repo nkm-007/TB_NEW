@@ -4,12 +4,14 @@
 
 // export default function FindBuddy() {
 //   const [interest, setInterest] = useState("");
+//   const [isEditingInterest, setIsEditingInterest] = useState(false);
 //   const [comment, setComment] = useState("");
 //   const [isEditingComment, setIsEditingComment] = useState(false);
 //   const [location, setLocation] = useState(null);
 //   const [finding, setFinding] = useState(false);
 //   const [matchedUsers, setMatchedUsers] = useState([]);
 //   const [otherUsers, setOtherUsers] = useState([]);
+//   const [sentRequests, setSentRequests] = useState(new Set());
 //   const navigate = useNavigate();
 
 //   const interests = [
@@ -81,10 +83,37 @@
 //         { headers: { Authorization: `Bearer ${token}` } }
 //       );
 //       setIsEditingComment(false);
-//       alert("Comment saved! It will be visible for 1 hour.");
+//       //alert("Comment saved! It will be visible for 1 hour.");
 //     } catch (err) {
 //       console.error("Save comment error:", err);
 //       alert("Failed to save comment");
+//     }
+//   };
+
+//   const handleSaveInterest = async () => {
+//     if (!interest) {
+//       alert("Please select an interest");
+//       return;
+//     }
+
+//     const token = localStorage.getItem("token");
+//     try {
+//       const { data } = await API.post(
+//         "/profile/save",
+//         { interest },
+//         { headers: { Authorization: `Bearer ${token}` } }
+//       );
+
+//       // Update localStorage
+//       const user = JSON.parse(localStorage.getItem("user"));
+//       user.interest = interest;
+//       localStorage.setItem("user", JSON.stringify(user));
+
+//       setIsEditingInterest(false);
+//       //alert("Interest updated!");
+//     } catch (err) {
+//       console.error("Save interest error:", err);
+//       alert("Failed to save interest");
 //     }
 //   };
 
@@ -140,10 +169,48 @@
 //     }
 //   };
 
-//   const handleSelectBuddy = (buddy) => {
-//     const user = JSON.parse(localStorage.getItem("user"));
-//     const roomId = [user.id, buddy._id].sort().join("-");
-//     navigate(`/chat/${roomId}`, { state: { buddy } });
+//   const handleSelectBuddy = async (buddy) => {
+//     const token = localStorage.getItem("token");
+
+//     try {
+//       // Check friend status first
+//       const { data } = await API.get(
+//         `/friend-request/status?userId=${buddy._id}`,
+//         {
+//           headers: { Authorization: `Bearer ${token}` },
+//         }
+//       );
+
+//       if (data.canChat) {
+//         // Already friends, go to chat
+//         const user = JSON.parse(localStorage.getItem("user"));
+//         const roomId = [user.id, buddy._id].sort().join("-");
+//         navigate(`/chat/${roomId}`, { state: { buddy } });
+//       } else if (data.status === "pending") {
+//         alert("Friend request already sent! Wait for them to accept.");
+//       } else {
+//         // Send friend request
+//         await API.post(
+//           "/friend-request/send",
+//           { toUserId: buddy._id },
+//           { headers: { Authorization: `Bearer ${token}` } }
+//         );
+
+//         // Add to sent requests
+//         setSentRequests((prev) => new Set([...prev, buddy._id]));
+
+//         alert("Friend request sent! 🎉");
+//         // Trigger notification update
+//         window.dispatchEvent(new Event("message-update"));
+//       }
+//     } catch (err) {
+//       console.error("Select buddy error:", err);
+//       alert(err.response?.data?.msg || "Failed to connect");
+//     }
+//   };
+
+//   const isRequestSent = (userId) => {
+//     return sentRequests.has(userId);
 //   };
 
 //   return (
@@ -158,23 +225,61 @@
 //           People within 1KM radius • Real-time results
 //         </p>
 
-//         {/* Interest Selection */}
+//         {/* Interest Selection with Edit */}
 //         <div className="mb-4 bg-white bg-opacity-5 backdrop-blur-lg border border-white border-opacity-10 rounded-xl p-5">
-//           <label className="block mb-3 text-lg font-semibold flex items-center gap-2">
-//             <span>💬</span> What vibes are we talking about?
-//           </label>
-//           <select
-//             value={interest}
-//             onChange={(e) => setInterest(e.target.value)}
-//             className="w-full p-4 bg-black bg-opacity-50 border border-purple-500 border-opacity-30 rounded-xl focus:outline-none focus:border-purple-500 text-lg font-medium"
-//           >
-//             <option value="">Pick your topic...</option>
-//             {interests.map((i) => (
-//               <option key={i} value={i}>
-//                 {i}
-//               </option>
-//             ))}
-//           </select>
+//           <div className="flex items-center justify-between mb-3">
+//             <label className="text-lg font-semibold flex items-center gap-2">
+//               <span>💬</span> What vibes are we talking about?
+//             </label>
+//             {!isEditingInterest && interest && (
+//               <button
+//                 onClick={() => setIsEditingInterest(true)}
+//                 className="text-xs px-3 py-1 bg-purple-500 rounded-lg hover:bg-purple-600 transition"
+//               >
+//                 Edit
+//               </button>
+//             )}
+//           </div>
+
+//           {isEditingInterest || !interest ? (
+//             <div>
+//               <select
+//                 value={interest}
+//                 onChange={(e) => setInterest(e.target.value)}
+//                 className="w-full p-4 bg-black bg-opacity-50 border border-purple-500 border-opacity-30 rounded-xl focus:outline-none focus:border-purple-500 text-lg font-medium mb-2"
+//               >
+//                 <option value="">Pick your topic...</option>
+//                 {interests.map((i) => (
+//                   <option key={i} value={i}>
+//                     {i}
+//                   </option>
+//                 ))}
+//               </select>
+//               <div className="flex gap-2 justify-end">
+//                 {interest && (
+//                   <button
+//                     onClick={() => setIsEditingInterest(false)}
+//                     className="text-xs px-3 py-1 bg-gray-700 rounded-lg hover:bg-gray-600 transition"
+//                   >
+//                     Cancel
+//                   </button>
+//                 )}
+//                 <button
+//                   onClick={handleSaveInterest}
+//                   className="text-xs px-4 py-1 bg-green-500 rounded-lg hover:bg-green-600 transition font-semibold"
+//                   disabled={!interest}
+//                 >
+//                   Save
+//                 </button>
+//               </div>
+//             </div>
+//           ) : (
+//             <div className="p-4 bg-purple-500 bg-opacity-10 rounded-lg border-l-2 border-purple-500">
+//               <p className="text-xl font-semibold text-purple-300">
+//                 {interest}
+//               </p>
+//             </div>
+//           )}
 //         </div>
 
 //         {/* Persistent Comment Box with Edit */}
@@ -182,7 +287,7 @@
 //           <div className="bg-black rounded-xl p-5">
 //             <div className="flex items-center justify-between mb-3">
 //               <label className="text-sm font-semibold flex items-center gap-2">
-//                 <span>✨</span> Your Availability Status
+//                 <span>✨</span> Addition to your Vibes
 //               </label>
 //               {!isEditingComment && comment && (
 //                 <button
@@ -296,9 +401,16 @@
 //                           </div>
 //                           <button
 //                             onClick={() => handleSelectBuddy(user)}
-//                             className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-green-500/50 transition whitespace-nowrap"
+//                             disabled={isRequestSent(user._id)}
+//                             className={`px-6 py-3 font-bold rounded-xl hover:shadow-lg transition whitespace-nowrap ${
+//                               isRequestSent(user._id)
+//                                 ? "bg-gray-600 text-gray-300 cursor-not-allowed"
+//                                 : "bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-green-500/50"
+//                             }`}
 //                           >
-//                             Chat Now ✓
+//                             {isRequestSent(user._id)
+//                               ? "Request Sent ✓"
+//                               : "Send Request ✉️"}
 //                           </button>
 //                         </div>
 //                       </div>
@@ -370,7 +482,6 @@
 //     </div>
 //   );
 // }
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
@@ -378,8 +489,13 @@ import API from "../services/api";
 export default function FindBuddy() {
   const [interest, setInterest] = useState("");
   const [isEditingInterest, setIsEditingInterest] = useState(false);
+
+  // PRIMARY STATES for Comment (saved/displayed value)
   const [comment, setComment] = useState("");
+  // TEMPORARY STATE for Comment (value while user is typing/editing)
+  const [tempComment, setTempComment] = useState("");
   const [isEditingComment, setIsEditingComment] = useState(false);
+
   const [location, setLocation] = useState(null);
   const [finding, setFinding] = useState(false);
   const [matchedUsers, setMatchedUsers] = useState([]);
@@ -415,7 +531,9 @@ export default function FindBuddy() {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (data.user.availabilityComment) {
-            setComment(data.user.availabilityComment);
+            const savedComment = data.user.availabilityComment;
+            setComment(savedComment); // Set primary comment state
+            setTempComment(savedComment); // Initialize temporary comment state
           }
         } catch (err) {
           console.error("Failed to fetch user data:", err);
@@ -450,13 +568,17 @@ export default function FindBuddy() {
   const handleSaveComment = async () => {
     const token = localStorage.getItem("token");
     try {
+      // Use tempComment for the API call
       await API.put(
         "/profile/update-comment",
-        { availabilityComment: comment },
+        { availabilityComment: tempComment }, // <-- Using tempComment
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      // Update the permanent comment state only after successful API save
+      setComment(tempComment); // <-- Update primary state
       setIsEditingComment(false);
-      alert("Comment saved! It will be visible for 1 hour.");
+      //alert("Comment saved! It will be visible for 1 hour.");
     } catch (err) {
       console.error("Save comment error:", err);
       alert("Failed to save comment");
@@ -483,7 +605,7 @@ export default function FindBuddy() {
       localStorage.setItem("user", JSON.stringify(user));
 
       setIsEditingInterest(false);
-      alert("Interest updated!");
+      //alert("Interest updated!");
     } catch (err) {
       console.error("Save interest error:", err);
       alert("Failed to save interest");
@@ -594,15 +716,13 @@ export default function FindBuddy() {
             Find Your Tea Buddy
           </span>
         </h1>
-        <p className="text-gray-400 mb-8">
-          People within 1KM radius • Real-time results
-        </p>
+        <p className="text-gray-400 mb-8">People in your zone(1KM)</p>
 
         {/* Interest Selection with Edit */}
         <div className="mb-4 bg-white bg-opacity-5 backdrop-blur-lg border border-white border-opacity-10 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <label className="text-lg font-semibold flex items-center gap-2">
-              <span>💬</span> What vibes are we talking about?
+              <span>💬</span> What mood are we talking about?
             </label>
             {!isEditingInterest && interest && (
               <button
@@ -660,11 +780,14 @@ export default function FindBuddy() {
           <div className="bg-black rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-semibold flex items-center gap-2">
-                <span>✨</span> Your Availability Status
+                <span>✨</span> Addition to your Vibes
               </label>
               {!isEditingComment && comment && (
                 <button
-                  onClick={() => setIsEditingComment(true)}
+                  onClick={() => {
+                    setTempComment(comment); // Initialize tempComment with the current saved comment
+                    setIsEditingComment(true);
+                  }}
                   className="text-xs px-3 py-1 bg-purple-500 rounded-lg hover:bg-purple-600 transition"
                 >
                   Edit
@@ -672,11 +795,12 @@ export default function FindBuddy() {
               )}
             </div>
 
+            {/* Conditional Rendering based on editing state */}
             {isEditingComment || !comment ? (
               <>
                 <textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
+                  value={tempComment} // BIND TO TEMPORARY STATE
+                  onChange={(e) => setTempComment(e.target.value)} // UPDATE TEMPORARY STATE
                   maxLength={150}
                   placeholder="e.g., 'Just binged Stranger Things S5!' or 'Thoughts on the new iPhone?'"
                   rows="3"
@@ -684,20 +808,19 @@ export default function FindBuddy() {
                 />
                 <div className="flex justify-between items-center mt-2">
                   <p className="text-xs text-gray-400">
-                    {comment.length}/150 • Auto-deletes after 1 hour
+                    {tempComment.length}/150 • Auto-deletes after 1 hour{" "}
+                    {/* USE TEMP COMMENT LENGTH */}
                   </p>
                   <div className="flex gap-2">
-                    {comment && (
-                      <button
-                        onClick={() => {
-                          setIsEditingComment(false);
-                          // Restore original comment
-                        }}
-                        className="text-xs px-3 py-1 bg-gray-700 rounded-lg hover:bg-gray-600 transition"
-                      >
-                        Cancel
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        setTempComment(comment); // Restore temp state to last saved comment
+                        setIsEditingComment(false);
+                      }}
+                      className="text-xs px-3 py-1 bg-gray-700 rounded-lg hover:bg-gray-600 transition"
+                    >
+                      Cancel
+                    </button>
                     <button
                       onClick={handleSaveComment}
                       className="text-xs px-4 py-1 bg-green-500 rounded-lg hover:bg-green-600 transition font-semibold"
@@ -709,7 +832,8 @@ export default function FindBuddy() {
               </>
             ) : (
               <div className="p-4 bg-purple-500 bg-opacity-10 rounded-lg border-l-2 border-purple-500">
-                <p className="text-gray-200 italic">"{comment}"</p>
+                <p className="text-gray-200 italic">"{comment}"</p>{" "}
+                {/* DISPLAY PRIMARY STATE */}
               </div>
             )}
           </div>
@@ -822,6 +946,9 @@ export default function FindBuddy() {
                             </div>
                           )}
                         </div>
+                        {/* Note: In the original code, the button for 'Other Interests' defaulted to 'Chat ✓', 
+                            but the logic in handleSelectBuddy still checks friend status and sends a request if necessary.
+                            I kept the button text as is for consistency with your provided code, but be aware of this potential UX inconsistency. */}
                         <button
                           onClick={() => handleSelectBuddy(user)}
                           className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition whitespace-nowrap ml-4"

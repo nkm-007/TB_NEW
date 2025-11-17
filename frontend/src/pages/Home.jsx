@@ -53,7 +53,7 @@ export default function Home() {
         {/* Main heading with gradient */}
         <h1 className="text-6xl md:text-7xl font-black mb-6 leading-tight">
           <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent animate-gradient">
-            Welcome to TeaChat
+            Welcome to teaG
           </span>
           <span className="block text-5xl md:text-6xl mt-2">☕✨</span>
         </h1>
@@ -63,9 +63,8 @@ export default function Home() {
           Connect with{" "}
           <span className="text-purple-400 font-bold">real people</span> nearby.
           <br />
-          Grab a tea. Have a{" "}
-          <span className="text-pink-400 font-bold">real conversation</span>. No
-          cap. 🔥
+          Grab a tea. Spark a{" "}
+          <span className="text-pink-400 font-bold">convo</span>.
         </p>
 
         {/* Feature pills */}
@@ -76,9 +75,9 @@ export default function Home() {
           <div className="px-4 py-2 bg-blue-500 bg-opacity-20 border border-blue-500 rounded-full text-sm backdrop-blur-sm">
             💬 Real-time Chat
           </div>
-          <div className="px-4 py-2 bg-pink-500 bg-opacity-20 border border-pink-500 rounded-full text-sm backdrop-blur-sm">
+          {/* <div className="px-4 py-2 bg-pink-500 bg-opacity-20 border border-pink-500 rounded-full text-sm backdrop-blur-sm">
             🔒 Privacy First
-          </div>
+          </div> */}
           <div className="px-4 py-2 bg-green-500 bg-opacity-20 border border-green-500 rounded-full text-sm backdrop-blur-sm">
             ⏰ Auto-delete
           </div>
@@ -133,7 +132,7 @@ export default function Home() {
 
         {/* Social proof */}
         <p className="mt-12 text-gray-500 text-sm">
-          Join people who prefer real conversations over endless scrolling 🌟
+          Made for people who sip & speak. 🌟
         </p>
       </div>
 

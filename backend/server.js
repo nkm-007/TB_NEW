@@ -120,7 +120,7 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:3000", // Your frontend URL
+    origin: ["http://localhost:3000", "https://teabuddy.vercel.app/"], // Your frontend URL
     methods: ["GET", "POST"],
     credentials: true,
   },

@@ -118,7 +118,7 @@
 //   };
 
 //   return (
-//     <nav className="flex justify-between items-center px-6 py-4 bg-black text-white border-b border-gray-800">
+//     <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 py-4 bg-black text-white border-b border-gray-800 backdrop-blur-lg bg-opacity-95">
 //       <h1
 //         className={`text-xl font-semibold ${
 //           isLoggedIn ? "cursor-pointer hover:text-purple-400 transition" : ""
@@ -174,7 +174,7 @@
 //   return (
 //     <BrowserRouter>
 //       <Navbar />
-//       <div className="min-h-screen bg-black text-white flex flex-col">
+//       <div className="min-h-screen bg-black text-white flex flex-col pt-20">
 //         <Routes>
 //           <Route path="/" element={<Home />} />
 //           <Route path="/login" element={<Login />} />
@@ -214,16 +214,19 @@ function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Check if user is actually logged in by verifying token AND user data
+  // Hide navbar on chat page
+  const hiddenPaths = ["/chat/"];
+  const shouldHideNavbar = hiddenPaths.some((path) =>
+    location.pathname.includes(path)
+  );
+
   const checkAuthStatus = () => {
     const token = localStorage.getItem("token");
     const user = localStorage.getItem("user");
 
-    // Only consider logged in if BOTH token and user exist
     const isAuth = !!(token && user);
     setIsLoggedIn(isAuth);
 
-    // Fetch unread count if logged in
     if (isAuth) {
       fetchUnreadCount();
     } else {
@@ -233,7 +236,6 @@ function Navbar() {
     return isAuth;
   };
 
-  // Fetch unread message count
   const fetchUnreadCount = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -254,32 +256,27 @@ function Navbar() {
     }
   };
 
-  // Check login status on mount and route change
   useEffect(() => {
     checkAuthStatus();
   }, [location.pathname]);
 
-  // Periodically refresh unread count every 10 seconds when logged in
   useEffect(() => {
     if (!isLoggedIn) return;
 
     const interval = setInterval(() => {
       fetchUnreadCount();
-    }, 10000); // Every 10 seconds
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [isLoggedIn]);
 
-  // Listen for storage changes (login/logout events)
   useEffect(() => {
     const handleStorageChange = () => {
       checkAuthStatus();
     };
 
     window.addEventListener("storage", handleStorageChange);
-    // Also listen for custom event we'll trigger on login/logout
     window.addEventListener("auth-change", handleStorageChange);
-    // Listen for message updates
     window.addEventListener("message-update", fetchUnreadCount);
 
     return () => {
@@ -295,7 +292,6 @@ function Navbar() {
     setIsLoggedIn(false);
     setUnreadCount(0);
 
-    // Trigger auth change event
     window.dispatchEvent(new Event("auth-change"));
 
     navigate("/");
@@ -305,8 +301,11 @@ function Navbar() {
     if (isLoggedIn) {
       navigate("/dashboard");
     }
-    // If not logged in, don't do anything (stay on current page)
   };
+
+  if (shouldHideNavbar) {
+    return null;
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 py-4 bg-black text-white border-b border-gray-800 backdrop-blur-lg bg-opacity-95">
@@ -316,7 +315,7 @@ function Navbar() {
         }`}
         onClick={handleLogoClick}
       >
-        TeaBreak ☕
+        teaG ☕
       </h1>
 
       <div className="flex space-x-4 text-sm sm:text-base items-center">
@@ -365,7 +364,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Navbar />
-      <div className="min-h-screen bg-black text-white flex flex-col pt-20">
+      <div className="min-h-screen bg-black text-white flex flex-col app-container">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -377,6 +376,17 @@ export default function App() {
           <Route path="/chat-list" element={<ChatList />} />
         </Routes>
       </div>
+
+      <style>{`
+        .app-container {
+          padding-top: 80px;
+        }
+        
+        /* Remove padding on chat page */
+        .app-container:has(+ div[class*="chat"]) {
+          padding-top: 0;
+        }
+      `}</style>
     </BrowserRouter>
   );
 }

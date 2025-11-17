@@ -228,7 +228,7 @@ export default function Signup() {
         JSON.stringify({ ...data.user, isNewUser: true })
       );
 
-      alert("Signup successful!");
+      // alert("Signup successful!");
       window.dispatchEvent(new Event("auth-change"));
       navigate("/dashboard");
     } catch (err) {
