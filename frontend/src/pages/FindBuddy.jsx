@@ -916,8 +916,8 @@ export default function FindBuddy() {
                 </div>
               </div>
             )}
-
             {/* Other Interest Users */}
+
             {otherUsers.length > 0 && (
               <div>
                 <h2 className="text-xl font-semibold mb-4 text-gray-400">
@@ -946,14 +946,19 @@ export default function FindBuddy() {
                             </div>
                           )}
                         </div>
-                        {/* Note: In the original code, the button for 'Other Interests' defaulted to 'Chat ✓', 
-                            but the logic in handleSelectBuddy still checks friend status and sends a request if necessary.
-                            I kept the button text as is for consistency with your provided code, but be aware of this potential UX inconsistency. */}
+                        {/* FIXED: Now checks if request is sent and updates button accordingly */}
                         <button
                           onClick={() => handleSelectBuddy(user)}
-                          className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition whitespace-nowrap ml-4"
+                          disabled={isRequestSent(user._id)}
+                          className={`px-6 py-2 rounded-lg transition whitespace-nowrap ml-4 font-semibold ${
+                            isRequestSent(user._id)
+                              ? "bg-gray-600 text-gray-300 cursor-not-allowed"
+                              : "bg-blue-500 text-white hover:bg-blue-600"
+                          }`}
                         >
-                          Chat ✓
+                          {isRequestSent(user._id)
+                            ? "Request Sent ✓"
+                            : "Send Request ✉️"}
                         </button>
                       </div>
                     </div>
