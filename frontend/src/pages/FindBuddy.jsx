@@ -487,12 +487,12 @@ import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 
 export default function FindBuddy() {
-  const [interest, setInterest] = useState("");
+  // Multiple interests selection
+  const [selectedInterests, setSelectedInterests] = useState([]);
   const [isEditingInterest, setIsEditingInterest] = useState(false);
 
-  // PRIMARY STATES for Comment (saved/displayed value)
+  // Comment states
   const [comment, setComment] = useState("");
-  // TEMPORARY STATE for Comment (value while user is typing/editing)
   const [tempComment, setTempComment] = useState("");
   const [isEditingComment, setIsEditingComment] = useState(false);
 
@@ -519,8 +519,12 @@ export default function FindBuddy() {
   useEffect(() => {
     const fetchUserData = async () => {
       const user = JSON.parse(localStorage.getItem("user"));
-      if (user?.interest) {
-        setInterest(user.interest);
+
+      // Load interests (support both old single interest and new multiple)
+      if (user?.interests && user.interests.length > 0) {
+        setSelectedInterests(user.interests);
+      } else if (user?.interest) {
+        setSelectedInterests([user.interest]);
       }
 
       // Fetch latest comment from backend
@@ -532,8 +536,13 @@ export default function FindBuddy() {
           });
           if (data.user.availabilityComment) {
             const savedComment = data.user.availabilityComment;
-            setComment(savedComment); // Set primary comment state
-            setTempComment(savedComment); // Initialize temporary comment state
+            setComment(savedComment);
+            setTempComment(savedComment);
+          }
+
+          // Update interests from server if available
+          if (data.user.interests && data.user.interests.length > 0) {
+            setSelectedInterests(data.user.interests);
           }
         } catch (err) {
           console.error("Failed to fetch user data:", err);
@@ -568,26 +577,31 @@ export default function FindBuddy() {
   const handleSaveComment = async () => {
     const token = localStorage.getItem("token");
     try {
-      // Use tempComment for the API call
       await API.put(
         "/profile/update-comment",
-        { availabilityComment: tempComment }, // <-- Using tempComment
+        { availabilityComment: tempComment },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Update the permanent comment state only after successful API save
-      setComment(tempComment); // <-- Update primary state
+      setComment(tempComment);
       setIsEditingComment(false);
-      //alert("Comment saved! It will be visible for 1 hour.");
     } catch (err) {
       console.error("Save comment error:", err);
       alert("Failed to save comment");
     }
   };
 
-  const handleSaveInterest = async () => {
-    if (!interest) {
-      alert("Please select an interest");
+  const handleToggleInterest = (interest) => {
+    if (selectedInterests.includes(interest)) {
+      setSelectedInterests(selectedInterests.filter((i) => i !== interest));
+    } else {
+      setSelectedInterests([...selectedInterests, interest]);
+    }
+  };
+
+  const handleSaveInterests = async () => {
+    if (selectedInterests.length === 0) {
+      alert("Please select at least one interest");
       return;
     }
 
@@ -595,38 +609,37 @@ export default function FindBuddy() {
     try {
       const { data } = await API.post(
         "/profile/save",
-        { interest },
+        { interests: selectedInterests },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       // Update localStorage
       const user = JSON.parse(localStorage.getItem("user"));
-      user.interest = interest;
+      user.interests = selectedInterests;
+      user.interest = selectedInterests[0]; // Keep first for backward compatibility
       localStorage.setItem("user", JSON.stringify(user));
 
       setIsEditingInterest(false);
-      //alert("Interest updated!");
     } catch (err) {
-      console.error("Save interest error:", err);
-      alert("Failed to save interest");
+      console.error("Save interests error:", err);
+      alert("Failed to save interests");
     }
   };
 
   const handleFindBuddies = async () => {
-    if (!interest) {
-      alert("Please select an interest");
+    if (selectedInterests.length === 0) {
+      alert("Please select at least one interest");
       return;
     }
 
     setFinding(true);
     try {
-      // Get current location
       const loc = await getLocation();
       setLocation(loc);
 
       const token = localStorage.getItem("token");
 
-      // Update location (don't send comment here, it's already saved)
+      // Update location
       await API.put(
         "/profile/update-location",
         {
@@ -636,12 +649,12 @@ export default function FindBuddy() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Find nearby buddies with selected interest
+      // Find nearby buddies with selected interests (send as comma-separated)
       const { data } = await API.get("/buddy/find-nearby", {
         params: {
           longitude: loc.longitude,
           latitude: loc.latitude,
-          interest: interest, // Send selected interest
+          interests: selectedInterests.join(","), // Send multiple interests
         },
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -668,34 +681,29 @@ export default function FindBuddy() {
     const token = localStorage.getItem("token");
 
     try {
-      // Check friend status first
       const { data } = await API.get(
-        `/friend-request/status?userId=${buddy._id}`,
+        `/friend-request/status?userId=${buddy._id}&buddyType=tea`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
 
       if (data.canChat) {
-        // Already friends, go to chat
         const user = JSON.parse(localStorage.getItem("user"));
-        const roomId = [user.id, buddy._id].sort().join("-");
-        navigate(`/chat/${roomId}`, { state: { buddy } });
+        const buddyType = "tea";
+        const roomId = [user.id, buddy._id].sort().join("-") + `-${buddyType}`;
+        navigate(`/chat/${roomId}`, { state: { buddy, buddyType } });
       } else if (data.status === "pending") {
         alert("Friend request already sent! Wait for them to accept.");
       } else {
-        // Send friend request
         await API.post(
           "/friend-request/send",
-          { toUserId: buddy._id },
+          { toUserId: buddy._id, buddyType: "tea" },
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        // Add to sent requests
         setSentRequests((prev) => new Set([...prev, buddy._id]));
-
         alert("Friend request sent! 🎉");
-        // Trigger notification update
         window.dispatchEvent(new Event("message-update"));
       }
     } catch (err) {
@@ -709,47 +717,55 @@ export default function FindBuddy() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-blue-900 text-white p-6">
+    <div className="min-h-screen bg-gradient-to-br from-teal-900 via-black to-cyan-900 text-white p-6">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-black mb-2">
-          <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
             Find Your Tea Buddy
           </span>
         </h1>
-        <p className="text-gray-400 mb-8">People in your zone(1KM)</p>
+        <p className="text-gray-400 mb-8">People in your zone (1KM)</p>
 
-        {/* Interest Selection with Edit */}
+        {/* Multiple Interest Selection */}
         <div className="mb-4 bg-white bg-opacity-5 backdrop-blur-lg border border-white border-opacity-10 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <label className="text-lg font-semibold flex items-center gap-2">
-              <span>💬</span> What mood are we talking about?
+              <span>💬</span> Select Your Interests (Multiple)
             </label>
-            {!isEditingInterest && interest && (
+            {!isEditingInterest && selectedInterests.length > 0 && (
               <button
                 onClick={() => setIsEditingInterest(true)}
-                className="text-xs px-3 py-1 bg-purple-500 rounded-lg hover:bg-purple-600 transition"
+                className="text-xs px-3 py-1 bg-teal-500 rounded-lg hover:bg-teal-600 transition"
               >
                 Edit
               </button>
             )}
           </div>
 
-          {isEditingInterest || !interest ? (
+          {isEditingInterest || selectedInterests.length === 0 ? (
             <div>
-              <select
-                value={interest}
-                onChange={(e) => setInterest(e.target.value)}
-                className="w-full p-4 bg-black bg-opacity-50 border border-purple-500 border-opacity-30 rounded-xl focus:outline-none focus:border-purple-500 text-lg font-medium mb-2"
-              >
-                <option value="">Pick your topic...</option>
-                {interests.map((i) => (
-                  <option key={i} value={i}>
-                    {i}
-                  </option>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {interests.map((interest) => (
+                  <button
+                    key={interest}
+                    onClick={() => handleToggleInterest(interest)}
+                    className={`p-3 rounded-xl text-sm font-semibold transition-all ${
+                      selectedInterests.includes(interest)
+                        ? "bg-gradient-to-r from-teal-600 to-cyan-600 text-white border-2 border-teal-400 shadow-lg"
+                        : "bg-black border border-teal-500 border-opacity-30 text-gray-400 hover:border-teal-400 hover:text-white"
+                    }`}
+                  >
+                    {selectedInterests.includes(interest) && "✓ "}
+                    {interest}
+                  </button>
                 ))}
-              </select>
+              </div>
+              <p className="text-xs text-gray-400 mb-3">
+                Selected: {selectedInterests.length} interest
+                {selectedInterests.length !== 1 ? "s" : ""}
+              </p>
               <div className="flex gap-2 justify-end">
-                {interest && (
+                {selectedInterests.length > 0 && (
                   <button
                     onClick={() => setIsEditingInterest(false)}
                     className="text-xs px-3 py-1 bg-gray-700 rounded-lg hover:bg-gray-600 transition"
@@ -758,25 +774,32 @@ export default function FindBuddy() {
                   </button>
                 )}
                 <button
-                  onClick={handleSaveInterest}
+                  onClick={handleSaveInterests}
                   className="text-xs px-4 py-1 bg-green-500 rounded-lg hover:bg-green-600 transition font-semibold"
-                  disabled={!interest}
+                  disabled={selectedInterests.length === 0}
                 >
                   Save
                 </button>
               </div>
             </div>
           ) : (
-            <div className="p-4 bg-purple-500 bg-opacity-10 rounded-lg border-l-2 border-purple-500">
-              <p className="text-xl font-semibold text-purple-300">
-                {interest}
-              </p>
+            <div className="p-4 bg-teal-500 bg-opacity-10 rounded-lg border-l-2 border-teal-500">
+              <div className="flex flex-wrap gap-2">
+                {selectedInterests.map((interest) => (
+                  <span
+                    key={interest}
+                    className="px-3 py-1 bg-teal-600 text-white rounded-full text-sm font-semibold"
+                  >
+                    {interest}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Persistent Comment Box with Edit */}
-        <div className="mb-6 bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl p-0.5">
+        {/* Comment Box */}
+        <div className="mb-6 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-xl p-0.5">
           <div className="bg-black rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-semibold flex items-center gap-2">
@@ -785,36 +808,34 @@ export default function FindBuddy() {
               {!isEditingComment && comment && (
                 <button
                   onClick={() => {
-                    setTempComment(comment); // Initialize tempComment with the current saved comment
+                    setTempComment(comment);
                     setIsEditingComment(true);
                   }}
-                  className="text-xs px-3 py-1 bg-purple-500 rounded-lg hover:bg-purple-600 transition"
+                  className="text-xs px-3 py-1 bg-teal-500 rounded-lg hover:bg-teal-600 transition"
                 >
                   Edit
                 </button>
               )}
             </div>
 
-            {/* Conditional Rendering based on editing state */}
             {isEditingComment || !comment ? (
               <>
                 <textarea
-                  value={tempComment} // BIND TO TEMPORARY STATE
-                  onChange={(e) => setTempComment(e.target.value)} // UPDATE TEMPORARY STATE
+                  value={tempComment}
+                  onChange={(e) => setTempComment(e.target.value)}
                   maxLength={150}
                   placeholder="e.g., 'Just binged Stranger Things S5!' or 'Thoughts on the new iPhone?'"
                   rows="3"
-                  className="w-full p-4 bg-white bg-opacity-5 border border-purple-500 border-opacity-30 rounded-xl focus:outline-none focus:border-purple-500 resize-none placeholder-gray-500"
+                  className="w-full p-4 bg-white bg-opacity-5 border border-teal-500 border-opacity-30 rounded-xl focus:outline-none focus:border-teal-500 resize-none placeholder-gray-500"
                 />
                 <div className="flex justify-between items-center mt-2">
                   <p className="text-xs text-gray-400">
-                    {tempComment.length}/150 • Auto-deletes after 1 hour{" "}
-                    {/* USE TEMP COMMENT LENGTH */}
+                    {tempComment.length}/150 • Auto-deletes after 1 hour
                   </p>
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
-                        setTempComment(comment); // Restore temp state to last saved comment
+                        setTempComment(comment);
                         setIsEditingComment(false);
                       }}
                       className="text-xs px-3 py-1 bg-gray-700 rounded-lg hover:bg-gray-600 transition"
@@ -831,9 +852,8 @@ export default function FindBuddy() {
                 </div>
               </>
             ) : (
-              <div className="p-4 bg-purple-500 bg-opacity-10 rounded-lg border-l-2 border-purple-500">
-                <p className="text-gray-200 italic">"{comment}"</p>{" "}
-                {/* DISPLAY PRIMARY STATE */}
+              <div className="p-4 bg-teal-500 bg-opacity-10 rounded-lg border-l-2 border-teal-500">
+                <p className="text-gray-200 italic">"{comment}"</p>
               </div>
             )}
           </div>
@@ -842,8 +862,8 @@ export default function FindBuddy() {
         {/* Find Button */}
         <button
           onClick={handleFindBuddies}
-          disabled={finding || !interest}
-          className="w-full group relative px-8 py-5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl font-bold text-xl shadow-2xl hover:shadow-purple-500/50 transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 mb-8"
+          disabled={finding || selectedInterests.length === 0}
+          className="w-full group relative px-8 py-5 bg-gradient-to-r from-teal-600 to-cyan-600 rounded-2xl font-bold text-xl shadow-2xl hover:shadow-teal-500/50 transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 mb-8"
         >
           {finding ? (
             <span className="flex items-center justify-center gap-3">
@@ -881,13 +901,32 @@ export default function FindBuddy() {
                               {user.name}
                             </p>
                             <p className="text-sm text-gray-400 mb-1">
-                              <span className="text-purple-300">
+                              <span className="text-teal-300">
                                 {user.profession}
                               </span>
+                              {user.professionDetails && (
+                                <span className="text-gray-500">
+                                  {" "}
+                                  • {user.professionDetails}
+                                </span>
+                              )}
                             </p>
-                            <p className="text-sm font-semibold text-green-400 flex items-center gap-1">
-                              <span>💬</span> {user.interest}
-                            </p>
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {user.interests && user.interests.length > 0 ? (
+                                user.interests.map((int) => (
+                                  <span
+                                    key={int}
+                                    className="text-xs px-2 py-1 bg-green-500 bg-opacity-20 border border-green-500 rounded-full font-semibold"
+                                  >
+                                    💬 {int}
+                                  </span>
+                                ))
+                              ) : user.interest ? (
+                                <span className="text-xs px-2 py-1 bg-green-500 bg-opacity-20 border border-green-500 rounded-full font-semibold">
+                                  💬 {user.interest}
+                                </span>
+                              ) : null}
+                            </div>
                             {user.availabilityComment && (
                               <div className="mt-3 p-3 bg-green-500 bg-opacity-10 rounded-lg border-l-2 border-green-500">
                                 <p className="text-sm text-gray-200 italic">
@@ -916,8 +955,8 @@ export default function FindBuddy() {
                 </div>
               </div>
             )}
-            {/* Other Interest Users */}
 
+            {/* Other Interest Users */}
             {otherUsers.length > 0 && (
               <div>
                 <h2 className="text-xl font-semibold mb-4 text-gray-400">
@@ -934,10 +973,25 @@ export default function FindBuddy() {
                           <p className="font-semibold text-lg">{user.name}</p>
                           <p className="text-sm text-gray-400">
                             {user.profession}
+                            {user.professionDetails &&
+                              ` • ${user.professionDetails}`}
                           </p>
-                          <p className="text-sm text-blue-400">
-                            💬 {user.interest}
-                          </p>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {user.interests && user.interests.length > 0 ? (
+                              user.interests.map((int) => (
+                                <span
+                                  key={int}
+                                  className="text-xs px-2 py-1 bg-blue-500 bg-opacity-20 border border-blue-500 rounded-full"
+                                >
+                                  💬 {int}
+                                </span>
+                              ))
+                            ) : user.interest ? (
+                              <span className="text-xs px-2 py-1 bg-blue-500 bg-opacity-20 border border-blue-500 rounded-full">
+                                💬 {user.interest}
+                              </span>
+                            ) : null}
+                          </div>
                           {user.availabilityComment && (
                             <div className="mt-2 p-2 bg-gray-800 rounded border-l-2 border-blue-500">
                               <p className="text-sm text-gray-300 italic">
@@ -946,14 +1000,13 @@ export default function FindBuddy() {
                             </div>
                           )}
                         </div>
-                        {/* FIXED: Now checks if request is sent and updates button accordingly */}
                         <button
                           onClick={() => handleSelectBuddy(user)}
                           disabled={isRequestSent(user._id)}
                           className={`px-6 py-2 rounded-lg transition whitespace-nowrap ml-4 font-semibold ${
                             isRequestSent(user._id)
                               ? "bg-gray-600 text-gray-300 cursor-not-allowed"
-                              : "bg-blue-500 text-white hover:bg-blue-600"
+                              : "bg-teal-500 text-white hover:bg-teal-600"
                           }`}
                         >
                           {isRequestSent(user._id)
@@ -979,7 +1032,7 @@ export default function FindBuddy() {
                 No buddies available nearby right now.
               </p>
               <p className="text-gray-500 text-sm mt-2">
-                Try changing your interest or check back later!
+                Try changing your interests or check back later!
               </p>
             </div>
           )}

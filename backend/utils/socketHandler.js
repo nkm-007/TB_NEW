@@ -136,6 +136,7 @@ export const setupSocket = (io) => {
           { roomId },
           {
             lastMessageTime: Date.now(),
+            buddyType: roomId.includes("-food") ? "food" : "tea",
             $addToSet: { participants: [socket.userId, receiverId] },
           },
           { upsert: true }

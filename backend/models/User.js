@@ -48,10 +48,14 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   name: { type: String },
   profession: { type: String },
-  professionDetails: { type: String }, // Company name, college, etc.
+  professionDetails: { type: String },
 
-  // Tea Buddy fields
-  interest: { type: String }, // For tea buddy conversations
+  // Tea Buddy fields - NOW SUPPORTS MULTIPLE INTERESTS
+  interests: {
+    type: [String], // Changed from single interest to array
+    default: [],
+  },
+  interest: { type: String }, // Keep for backward compatibility
 
   // Food Buddy fields
   foodPreference: {
@@ -64,9 +68,9 @@ const userSchema = new mongoose.Schema({
     enum: ["Restaurant", "Online", "Both"],
     default: null,
   },
-  cuisine: { type: String }, // Optional: preferred cuisine
+  cuisine: { type: String },
 
-  // Location fields for geospatial queries
+  // Location fields
   location: {
     type: {
       type: String,
@@ -74,7 +78,7 @@ const userSchema = new mongoose.Schema({
       default: "Point",
     },
     coordinates: {
-      type: [Number], // [longitude, latitude]
+      type: [Number],
       default: [0, 0],
     },
   },
@@ -97,7 +101,7 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-// Create geospatial index for location-based queries
+// Create geospatial index
 userSchema.index({ location: "2dsphere" });
 
 export default mongoose.model("User", userSchema);

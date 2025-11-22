@@ -31,6 +31,16 @@
 //       roomId,
 //     });
 
+//     // Populate sender info
+//     const populatedRequest = await FriendRequest.findById(
+//       friendRequest._id
+//     ).populate("from", "name profession interest");
+
+//     // Emit socket event to receiver
+//     req.app.get("io").emit(`friend-request-${toUserId}`, {
+//       request: populatedRequest,
+//     });
+
 //     res.json({
 //       msg: "Friend request sent",
 //       requestId: friendRequest._id,
@@ -85,6 +95,12 @@
 //     request.status = "accepted";
 //     request.updatedAt = Date.now();
 //     await request.save();
+
+//     // Emit socket event to sender
+//     req.app.get("io").emit(`request-accepted-${request.from}`, {
+//       acceptedBy: decoded.id,
+//       roomId: request.roomId,
+//     });
 
 //     res.json({
 //       msg: "Friend request accepted",
@@ -155,19 +171,20 @@ import FriendRequest from "../models/FriendRequest.js";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
-// Send friend request
+// Send friend request - NOW INCLUDES BUDDY TYPE
 export const sendFriendRequest = async (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ msg: "No token" });
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const { toUserId } = req.body;
+    const { toUserId, buddyType = "tea" } = req.body; // NEW: Accept buddyType
 
-    // Check if request already exists
+    // Check if request already exists for this buddy type
     const existingRequest = await FriendRequest.findOne({
       from: decoded.id,
       to: toUserId,
+      buddyType: buddyType, // NEW: Check for same buddy type
       status: { $in: ["pending", "accepted"] },
     });
 
@@ -175,19 +192,20 @@ export const sendFriendRequest = async (req, res) => {
       return res.status(400).json({ msg: "Request already sent or accepted" });
     }
 
-    // Create room ID
-    const roomId = [decoded.id, toUserId].sort().join("-");
+    // Create room ID with buddy type suffix
+    const roomId = [decoded.id, toUserId].sort().join("-") + `-${buddyType}`;
 
     const friendRequest = await FriendRequest.create({
       from: decoded.id,
       to: toUserId,
       roomId,
+      buddyType, // NEW: Store buddy type
     });
 
     // Populate sender info
     const populatedRequest = await FriendRequest.findById(
       friendRequest._id
-    ).populate("from", "name profession interest");
+    ).populate("from", "name profession interests interest");
 
     // Emit socket event to receiver
     req.app.get("io").emit(`friend-request-${toUserId}`, {
@@ -204,7 +222,7 @@ export const sendFriendRequest = async (req, res) => {
   }
 };
 
-// Get pending friend requests (received)
+// Get pending friend requests
 export const getPendingRequests = async (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ msg: "No token" });
@@ -216,7 +234,7 @@ export const getPendingRequests = async (req, res) => {
       to: decoded.id,
       status: "pending",
     })
-      .populate("from", "name profession interest")
+      .populate("from", "name profession interests interest")
       .sort({ createdAt: -1 });
 
     res.json({ requests });
@@ -253,11 +271,13 @@ export const acceptFriendRequest = async (req, res) => {
     req.app.get("io").emit(`request-accepted-${request.from}`, {
       acceptedBy: decoded.id,
       roomId: request.roomId,
+      buddyType: request.buddyType, // NEW: Include buddy type
     });
 
     res.json({
       msg: "Friend request accepted",
       roomId: request.roomId,
+      buddyType: request.buddyType, // NEW: Return buddy type
     });
   } catch (err) {
     console.error("Accept friend request error:", err);
@@ -295,19 +315,19 @@ export const declineFriendRequest = async (req, res) => {
   }
 };
 
-// Check if users are friends (accepted request exists)
+// Check friend status - NOW CHECKS BY BUDDY TYPE
 export const checkFriendStatus = async (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ msg: "No token" });
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const { userId } = req.query;
+    const { userId, buddyType = "tea" } = req.query; // NEW: Accept buddyType
 
     const request = await FriendRequest.findOne({
       $or: [
-        { from: decoded.id, to: userId },
-        { from: userId, to: decoded.id },
+        { from: decoded.id, to: userId, buddyType },
+        { from: userId, to: decoded.id, buddyType },
       ],
     });
 
@@ -315,6 +335,7 @@ export const checkFriendStatus = async (req, res) => {
       status: request ? request.status : "none",
       requestId: request?._id,
       canChat: request?.status === "accepted",
+      buddyType: request?.buddyType,
     });
   } catch (err) {
     res.status(500).json({ msg: err.message });

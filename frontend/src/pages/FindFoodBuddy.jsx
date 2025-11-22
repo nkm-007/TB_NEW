@@ -182,19 +182,15 @@ export default function FindFoodBuddy() {
 
       if (data.canChat) {
         const user = JSON.parse(localStorage.getItem("user"));
-        const roomId = [user.id, buddy._id].sort().join("-");
-        navigate(`/chat/${roomId}`, {
-          state: {
-            buddy,
-            buddyType: "food", // Add this to track the type
-          },
-        });
+        const buddyType = "food";
+        const roomId = [user.id, buddy._id].sort().join("-") + `-${buddyType}`;
+        navigate(`/chat/${roomId}`, { state: { buddy, buddyType } });
       } else if (data.status === "pending") {
         alert("Friend request already sent! Wait for them to accept.");
       } else {
         await API.post(
           "/friend-request/send",
-          { toUserId: buddy._id },
+          { toUserId: buddy._id, buddyType: "food" },
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -471,6 +467,11 @@ export default function FindFoodBuddy() {
                                 </span>
                               )}
                             </div>
+                            {user.interests && user.interests.length > 0 && (
+                              <p className="text-sm text-blue-400">
+                                💬 {user.interests.join(", ")}
+                              </p>
+                            )}
                             {user.availabilityComment && (
                               <div className="mt-3 p-3 bg-green-500 bg-opacity-10 rounded-lg border-l-2 border-green-500">
                                 <p className="text-sm text-gray-200 italic">

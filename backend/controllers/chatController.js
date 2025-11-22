@@ -41,6 +41,7 @@ export const getMyChatRooms = async (req, res) => {
 
         return {
           roomId: room.roomId,
+          buddyType: room.buddyType,
           otherUser: {
             _id: otherUser._id,
             name: otherUser.name,

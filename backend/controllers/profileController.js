@@ -1,7 +1,7 @@
 // import User from "../models/User.js";
 // import jwt from "jsonwebtoken";
 
-// // Save/Update profile
+// // Save/Update profile (Tea Buddy)
 // export const saveProfile = async (req, res) => {
 //   const token = req.headers.authorization?.split(" ")[1];
 //   if (!token) return res.status(401).json({ msg: "No token" });
@@ -39,6 +39,45 @@
 //   }
 // };
 
+// // Save/Update food buddy profile
+// export const saveFoodProfile = async (req, res) => {
+//   const token = req.headers.authorization?.split(" ")[1];
+//   if (!token) return res.status(401).json({ msg: "No token" });
+
+//   try {
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     const { foodPreference, foodMode, cuisine } = req.body;
+
+//     const user = await User.findByIdAndUpdate(
+//       decoded.id,
+//       {
+//         foodPreference,
+//         foodMode,
+//         cuisine: cuisine || "",
+//         foodProfileCompleted: true,
+//       },
+//       { new: true }
+//     );
+
+//     res.json({
+//       msg: "Food profile updated successfully",
+//       user: {
+//         id: user._id,
+//         email: user.email,
+//         name: user.name,
+//         profession: user.profession,
+//         professionDetails: user.professionDetails,
+//         foodPreference: user.foodPreference,
+//         foodMode: user.foodMode,
+//         cuisine: user.cuisine,
+//         foodProfileCompleted: user.foodProfileCompleted,
+//       },
+//     });
+//   } catch (err) {
+//     res.status(500).json({ msg: err.message });
+//   }
+// };
+
 // // Get user profile
 // export const getProfile = async (req, res) => {
 //   const token = req.headers.authorization?.split(" ")[1];
@@ -56,7 +95,7 @@
 //   }
 // };
 
-// // Toggle availability
+// // Toggle tea availability
 // export const toggleAvailability = async (req, res) => {
 //   const token = req.headers.authorization?.split(" ")[1];
 //   if (!token) return res.status(401).json({ msg: "No token" });
@@ -74,6 +113,30 @@
 //     res.json({
 //       msg: "Availability updated",
 //       availableForTea: user.availableForTea,
+//     });
+//   } catch (err) {
+//     res.status(500).json({ msg: err.message });
+//   }
+// };
+
+// // Toggle food availability
+// export const toggleFoodAvailability = async (req, res) => {
+//   const token = req.headers.authorization?.split(" ")[1];
+//   if (!token) return res.status(401).json({ msg: "No token" });
+
+//   try {
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     const { availableForFood } = req.body;
+
+//     const user = await User.findByIdAndUpdate(
+//       decoded.id,
+//       { availableForFood, lastActive: Date.now() },
+//       { new: true }
+//     ).select("-password");
+
+//     res.json({
+//       msg: "Food availability updated",
+//       availableForFood: user.availableForFood,
 //     });
 //   } catch (err) {
 //     res.status(500).json({ msg: err.message });
@@ -146,26 +209,35 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
-// Save/Update profile (Tea Buddy)
+// Save/Update profile (Tea Buddy) - NOW SUPPORTS MULTIPLE INTERESTS
 export const saveProfile = async (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ msg: "No token" });
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const { name, profession, professionDetails, interest } = req.body;
+    const { name, profession, professionDetails, interests } = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      decoded.id,
-      {
-        name,
-        profession,
-        professionDetails: professionDetails || "",
-        interest,
-        profileCompleted: true,
-      },
-      { new: true }
-    );
+    // Support both single interest (backward compatibility) and multiple interests
+    const updateData = {
+      name,
+      profession,
+      professionDetails: professionDetails || "",
+      profileCompleted: true,
+    };
+
+    // If interests is an array, use it; otherwise convert single interest to array
+    if (Array.isArray(interests)) {
+      updateData.interests = interests;
+      updateData.interest = interests[0]; // Keep first interest for backward compatibility
+    } else if (interests) {
+      updateData.interests = [interests];
+      updateData.interest = interests;
+    }
+
+    const user = await User.findByIdAndUpdate(decoded.id, updateData, {
+      new: true,
+    });
 
     res.json({
       msg: "Profile updated successfully",
@@ -175,6 +247,7 @@ export const saveProfile = async (req, res) => {
         name: user.name,
         profession: user.profession,
         professionDetails: user.professionDetails,
+        interests: user.interests,
         interest: user.interest,
         profileCompleted: user.profileCompleted,
       },

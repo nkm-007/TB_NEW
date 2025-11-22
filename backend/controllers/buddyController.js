@@ -88,7 +88,7 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
-// Find nearby tea buddies within 1km radius
+// Find nearby tea buddies - NOW SUPPORTS MULTIPLE INTERESTS
 export const findNearbyBuddies = async (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ msg: "No token" });
@@ -101,43 +101,70 @@ export const findNearbyBuddies = async (req, res) => {
       return res.status(404).json({ msg: "User not found" });
     }
 
-    const { longitude, latitude, interest } = req.query;
+    const { longitude, latitude, interests } = req.query;
 
     if (!longitude || !latitude) {
       return res.status(400).json({ msg: "Location required" });
     }
 
-    if (!interest) {
-      return res.status(400).json({ msg: "Interest required" });
+    if (!interests) {
+      return res.status(400).json({ msg: "At least one interest required" });
     }
 
-    // Find users within 1km (1000 meters) radius
+    // Parse interests (can be comma-separated string or array)
+    const interestArray =
+      typeof interests === "string"
+        ? interests.split(",").map((i) => i.trim())
+        : Array.isArray(interests)
+        ? interests
+        : [interests];
+
+    // Find users within 1km
     const nearbyUsers = await User.find({
-      _id: { $ne: currentUser._id }, // Exclude current user
-      availableForTea: true, // Only available users
+      _id: { $ne: currentUser._id },
+      availableForTea: true,
       location: {
         $near: {
           $geometry: {
             type: "Point",
             coordinates: [parseFloat(longitude), parseFloat(latitude)],
           },
-          $maxDistance: 1000, // 1000 meters = 1km
+          $maxDistance: 1000,
         },
       },
     })
       .select(
-        "name profession professionDetails interest location lastActive availabilityComment"
+        "name profession professionDetails interests interest location lastActive availabilityComment"
       )
-      .limit(50); // Limit to 50 results
+      .limit(50);
 
-    // Separate by interest match based on SELECTED interest, not current user's interest
-    const matchedInterest = nearbyUsers.filter(
-      (user) => user.interest === interest
-    );
+    // Separate by interest match
+    const matchedInterest = nearbyUsers.filter((user) => {
+      // Check if user has any of the selected interests
+      const userInterests =
+        user.interests && user.interests.length > 0
+          ? user.interests
+          : user.interest
+          ? [user.interest]
+          : [];
 
-    const otherInterests = nearbyUsers.filter(
-      (user) => user.interest !== interest
-    );
+      return interestArray.some((selectedInterest) =>
+        userInterests.includes(selectedInterest)
+      );
+    });
+
+    const otherInterests = nearbyUsers.filter((user) => {
+      const userInterests =
+        user.interests && user.interests.length > 0
+          ? user.interests
+          : user.interest
+          ? [user.interest]
+          : [];
+
+      return !interestArray.some((selectedInterest) =>
+        userInterests.includes(selectedInterest)
+      );
+    });
 
     res.json({
       matchedInterest,
@@ -150,7 +177,7 @@ export const findNearbyBuddies = async (req, res) => {
   }
 };
 
-// Find nearby food buddies within 1km radius
+// Find nearby food buddies - FIXED "Both" LOGIC
 export const findNearbyFoodBuddies = async (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ msg: "No token" });
@@ -173,7 +200,6 @@ export const findNearbyFoodBuddies = async (req, res) => {
       return res.status(400).json({ msg: "Food preferences required" });
     }
 
-    // Build query for food buddies
     const query = {
       _id: { $ne: currentUser._id },
       availableForFood: true,
@@ -191,28 +217,27 @@ export const findNearbyFoodBuddies = async (req, res) => {
     // Find all nearby users first
     const nearbyUsers = await User.find(query)
       .select(
-        "name profession professionDetails foodPreference foodMode cuisine location lastActive availabilityComment"
+        "name profession professionDetails foodPreference foodMode cuisine interests interest location lastActive availabilityComment"
       )
       .limit(50);
 
-    // Filter for matched preferences
+    // FIXED: Enhanced matching logic for "Both" option
     const matchedUsers = nearbyUsers.filter((user) => {
       // Food preference matching
       const prefMatches =
-        foodPreference === "Both" ||
-        user.foodPreference === "Both" ||
-        user.foodPreference === foodPreference;
+        foodPreference === "Both" || // If user selected Both, match with everyone
+        user.foodPreference === "Both" || // If buddy has Both, they match
+        user.foodPreference === foodPreference; // Direct match
 
       // Food mode matching
       const modeMatches =
-        foodMode === "Both" ||
-        user.foodMode === "Both" ||
-        user.foodMode === foodMode;
+        foodMode === "Both" || // If user selected Both, match with everyone
+        user.foodMode === "Both" || // If buddy has Both, they match
+        user.foodMode === foodMode; // Direct match
 
       return prefMatches && modeMatches;
     });
 
-    // Rest are "other" buddies
     const otherUsers = nearbyUsers.filter((user) => {
       return !matchedUsers.find(
         (m) => m._id.toString() === user._id.toString()
@@ -230,7 +255,6 @@ export const findNearbyFoodBuddies = async (req, res) => {
   }
 };
 
-// Get all available users (for browsing)
 export const getAllAvailableUsers = async (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ msg: "No token" });
@@ -243,7 +267,7 @@ export const getAllAvailableUsers = async (req, res) => {
       availableForTea: true,
       profileCompleted: true,
     })
-      .select("name profession interest lastActive")
+      .select("name profession interests interest lastActive")
       .sort({ lastActive: -1 })
       .limit(100);
 

@@ -198,7 +198,7 @@ export default function ProfilePopup({ onClose, onComplete }) {
   const [interest, setInterest] = useState("");
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-
+  const [selectedInterests, setSelectedInterests] = useState([]);
   const professions = [
     "Businessman",
     "Student",
@@ -228,6 +228,7 @@ export default function ProfilePopup({ onClose, onComplete }) {
     // Load existing user data
     const loadUserData = async () => {
       const token = localStorage.getItem("token");
+
       if (!token) return;
 
       try {
@@ -239,7 +240,7 @@ export default function ProfilePopup({ onClose, onComplete }) {
           setName(data.user.name || "");
           setProfession(data.user.profession || "");
           setProfessionDetails(data.user.professionDetails || "");
-          setInterest(data.user.interest || "");
+          setSelectedInterests(data.user.interests || []);
           setIsEditing(!!data.user.profileCompleted);
         }
       } catch (err) {
@@ -251,7 +252,7 @@ export default function ProfilePopup({ onClose, onComplete }) {
   }, []);
 
   const handleSubmit = async () => {
-    if (!name || !profession || !interest) {
+    if (!name || !profession || selectedInterests.length === 0) {
       alert("Please fill all required fields");
       return;
     }
@@ -271,7 +272,7 @@ export default function ProfilePopup({ onClose, onComplete }) {
     try {
       const { data } = await API.post(
         "/profile/save",
-        { name, profession, professionDetails, interest },
+        { name, profession, professionDetails, interests: selectedInterests },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -392,20 +393,31 @@ export default function ProfilePopup({ onClose, onComplete }) {
 
             <div>
               <label className="block mb-2 text-sm font-semibold text-gray-300">
-                Interest to Talk About
+                Interests (Select multiple)
               </label>
-              <select
-                value={interest}
-                onChange={(e) => setInterest(e.target.value)}
-                className="w-full p-4 bg-black border border-purple-500 border-opacity-30 rounded-xl focus:outline-none focus:border-purple-500 text-white"
-              >
-                <option value="">Select Interest</option>
+              <div className="grid grid-cols-2 gap-2">
                 {interests.map((i) => (
-                  <option key={i} value={i}>
+                  <button
+                    key={i}
+                    onClick={() => {
+                      if (selectedInterests.includes(i)) {
+                        setSelectedInterests(
+                          selectedInterests.filter((int) => int !== i)
+                        );
+                      } else {
+                        setSelectedInterests([...selectedInterests, i]);
+                      }
+                    }}
+                    className={`p-3 rounded-xl text-sm font-semibold transition ${
+                      selectedInterests.includes(i)
+                        ? "bg-purple-600 text-white border-2 border-purple-400"
+                        : "bg-black border border-purple-500 border-opacity-30 text-gray-400"
+                    }`}
+                  >
                     {i}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           </div>
 
