@@ -1,10 +1,11 @@
 // import mongoose from "mongoose";
 
 // const userSchema = new mongoose.Schema({
-//   phone: { type: String, unique: true, required: true },
+//   email: { type: String, unique: true, required: true },
 //   password: { type: String, required: true },
 //   name: { type: String },
 //   profession: { type: String },
+//   professionDetails: { type: String }, // Company name, college, etc.
 //   interest: { type: String },
 
 //   // Location fields for geospatial queries
@@ -48,7 +49,22 @@ const userSchema = new mongoose.Schema({
   name: { type: String },
   profession: { type: String },
   professionDetails: { type: String }, // Company name, college, etc.
-  interest: { type: String },
+
+  // Tea Buddy fields
+  interest: { type: String }, // For tea buddy conversations
+
+  // Food Buddy fields
+  foodPreference: {
+    type: String,
+    enum: ["Veg", "Non-Veg", "Both"],
+    default: null,
+  },
+  foodMode: {
+    type: String,
+    enum: ["Restaurant", "Online", "Both"],
+    default: null,
+  },
+  cuisine: { type: String }, // Optional: preferred cuisine
 
   // Location fields for geospatial queries
   location: {
@@ -65,12 +81,14 @@ const userSchema = new mongoose.Schema({
 
   // Availability status
   availableForTea: { type: Boolean, default: false },
+  availableForFood: { type: Boolean, default: false },
   availabilityComment: { type: String, maxlength: 150, default: "" },
   availabilityCommentUpdatedAt: { type: Date },
   lastActive: { type: Date, default: Date.now },
 
   // Profile completion
   profileCompleted: { type: Boolean, default: false },
+  foodProfileCompleted: { type: Boolean, default: false },
 
   // For password reset
   resetOtp: { type: String },

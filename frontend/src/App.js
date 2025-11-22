@@ -23,16 +23,19 @@
 //   const navigate = useNavigate();
 //   const location = useLocation();
 
-//   // Check if user is actually logged in by verifying token AND user data
+//   // Hide navbar on chat page
+//   const hiddenPaths = ["/chat/"];
+//   const shouldHideNavbar = hiddenPaths.some((path) =>
+//     location.pathname.includes(path)
+//   );
+
 //   const checkAuthStatus = () => {
 //     const token = localStorage.getItem("token");
 //     const user = localStorage.getItem("user");
 
-//     // Only consider logged in if BOTH token and user exist
 //     const isAuth = !!(token && user);
 //     setIsLoggedIn(isAuth);
 
-//     // Fetch unread count if logged in
 //     if (isAuth) {
 //       fetchUnreadCount();
 //     } else {
@@ -42,7 +45,6 @@
 //     return isAuth;
 //   };
 
-//   // Fetch unread message count
 //   const fetchUnreadCount = async () => {
 //     const token = localStorage.getItem("token");
 //     if (!token) return;
@@ -63,32 +65,27 @@
 //     }
 //   };
 
-//   // Check login status on mount and route change
 //   useEffect(() => {
 //     checkAuthStatus();
 //   }, [location.pathname]);
 
-//   // Periodically refresh unread count every 10 seconds when logged in
 //   useEffect(() => {
 //     if (!isLoggedIn) return;
 
 //     const interval = setInterval(() => {
 //       fetchUnreadCount();
-//     }, 10000); // Every 10 seconds
+//     }, 10000);
 
 //     return () => clearInterval(interval);
 //   }, [isLoggedIn]);
 
-//   // Listen for storage changes (login/logout events)
 //   useEffect(() => {
 //     const handleStorageChange = () => {
 //       checkAuthStatus();
 //     };
 
 //     window.addEventListener("storage", handleStorageChange);
-//     // Also listen for custom event we'll trigger on login/logout
 //     window.addEventListener("auth-change", handleStorageChange);
-//     // Listen for message updates
 //     window.addEventListener("message-update", fetchUnreadCount);
 
 //     return () => {
@@ -104,7 +101,6 @@
 //     setIsLoggedIn(false);
 //     setUnreadCount(0);
 
-//     // Trigger auth change event
 //     window.dispatchEvent(new Event("auth-change"));
 
 //     navigate("/");
@@ -114,8 +110,11 @@
 //     if (isLoggedIn) {
 //       navigate("/dashboard");
 //     }
-//     // If not logged in, don't do anything (stay on current page)
 //   };
+
+//   if (shouldHideNavbar) {
+//     return null;
+//   }
 
 //   return (
 //     <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 py-4 bg-black text-white border-b border-gray-800 backdrop-blur-lg bg-opacity-95">
@@ -125,7 +124,7 @@
 //         }`}
 //         onClick={handleLogoClick}
 //       >
-//         TeaBreak ☕
+//         teaG ☕
 //       </h1>
 
 //       <div className="flex space-x-4 text-sm sm:text-base items-center">
@@ -174,7 +173,7 @@
 //   return (
 //     <BrowserRouter>
 //       <Navbar />
-//       <div className="min-h-screen bg-black text-white flex flex-col pt-20">
+//       <div className="min-h-screen bg-black text-white flex flex-col app-container">
 //         <Routes>
 //           <Route path="/" element={<Home />} />
 //           <Route path="/login" element={<Login />} />
@@ -186,6 +185,17 @@
 //           <Route path="/chat-list" element={<ChatList />} />
 //         </Routes>
 //       </div>
+
+//       <style>{`
+//         .app-container {
+//           padding-top: 80px;
+//         }
+
+//         /* Remove padding on chat page */
+//         .app-container:has(+ div[class*="chat"]) {
+//           padding-top: 0;
+//         }
+//       `}</style>
 //     </BrowserRouter>
 //   );
 // }
@@ -203,6 +213,7 @@ import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import FindBuddy from "./pages/FindBuddy";
+import FindFoodBuddy from "./pages/FindFoodBuddy";
 import Chat from "./pages/Chat";
 import ChatList from "./pages/ChatList";
 import API from "./services/api";
@@ -372,6 +383,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/find-buddy" element={<FindBuddy />} />
+          <Route path="/find-foodbuddy" element={<FindFoodBuddy />} />
           <Route path="/chat/:roomId" element={<Chat />} />
           <Route path="/chat-list" element={<ChatList />} />
         </Routes>

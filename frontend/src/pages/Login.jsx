@@ -71,7 +71,7 @@ export default function Login() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      alert("Login successful!");
+      // alert("Login successful!");
 
       // Trigger auth change event for navbar update
       window.dispatchEvent(new Event("auth-change"));

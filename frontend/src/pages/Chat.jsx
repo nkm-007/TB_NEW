@@ -66,7 +66,6 @@
 //           }
 //         )
 //           .then(() => {
-//             // Trigger message update event to refresh navbar badge
 //             window.dispatchEvent(new Event("message-update"));
 //           })
 //           .catch(console.error);
@@ -77,7 +76,6 @@
 //     socketService.onReceiveMessage((msg) => {
 //       setMessages((prev) => [...prev, msg]);
 //       setShowQuickReplies(false);
-//       // Trigger message update event
 //       window.dispatchEvent(new Event("message-update"));
 //     });
 
@@ -106,7 +104,6 @@
 //   }, [roomId, buddy, navigate]);
 
 //   useEffect(() => {
-//     // Scroll to bottom when new messages arrive
 //     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 //   }, [messages]);
 
@@ -129,12 +126,10 @@
 
 //     socketService.emitTyping(roomId);
 
-//     // Clear previous timeout
 //     if (typingTimeoutRef.current) {
 //       clearTimeout(typingTimeoutRef.current);
 //     }
 
-//     // Stop typing after 1 second of inactivity
 //     typingTimeoutRef.current = setTimeout(() => {
 //       socketService.emitStopTyping(roomId);
 //     }, 1000);
@@ -149,7 +144,6 @@
 
 //   const toggleLocationSharing = () => {
 //     if (!sharingLocation) {
-//       // Start sharing location
 //       if (!navigator.geolocation) {
 //         alert("Geolocation not supported by your browser");
 //         return;
@@ -157,7 +151,6 @@
 
 //       setSharingLocation(true);
 
-//       // Share location immediately and then every 10 seconds
 //       const shareLocation = () => {
 //         navigator.geolocation.getCurrentPosition(
 //           (position) => {
@@ -184,7 +177,6 @@
 //       shareLocation();
 //       locationIntervalRef.current = setInterval(shareLocation, 10000);
 //     } else {
-//       // Stop sharing
 //       setSharingLocation(false);
 //       if (locationIntervalRef.current) {
 //         clearInterval(locationIntervalRef.current);
@@ -205,54 +197,62 @@
 //   };
 
 //   return (
-//     <div className="flex flex-col h-screen bg-gradient-to-br from-purple-900 via-black to-blue-900 text-white">
-//       {/* Header */}
-//       <div className="bg-black bg-opacity-50 backdrop-blur-lg p-4 border-b border-purple-500 border-opacity-30 flex items-center justify-between">
-//         <div className="flex items-center gap-4">
-//           <button
-//             onClick={() => navigate("/chat-list")}
-//             className="text-2xl hover:text-purple-400 transition"
-//           >
-//             ←
-//           </button>
-//           <div className="flex items-center gap-3">
-//             <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-xl font-bold">
-//               {buddy?.name?.charAt(0).toUpperCase()}
-//             </div>
-//             <div>
-//               <h2 className="font-bold text-lg">{buddy?.name}</h2>
-//               <p className="text-sm text-purple-300">{buddy?.profession}</p>
+//     <div className="fixed inset-0 flex flex-col bg-gradient-to-br from-purple-900 via-black to-blue-900 text-white">
+//       {/* Header - Fixed */}
+//       <div className="flex-shrink-0 bg-black bg-opacity-50 backdrop-blur-lg p-3 border-b border-purple-500 border-opacity-30">
+//         <div className="flex items-center justify-between gap-2">
+//           <div className="flex items-center gap-2 min-w-0 flex-1">
+//             <button
+//               onClick={() => navigate("/chat-list")}
+//               className="text-xl hover:text-purple-400 transition flex-shrink-0"
+//             >
+//               ←
+//             </button>
+//             <div className="flex items-center gap-2 min-w-0 flex-1">
+//               <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
+//                 {buddy?.name?.charAt(0).toUpperCase()}
+//               </div>
+//               <div className="min-w-0 flex-1">
+//                 <h2 className="font-bold text-sm truncate">{buddy?.name}</h2>
+//                 <p className="text-xs text-purple-300 truncate">
+//                   {buddy?.profession}
+//                 </p>
+//               </div>
 //             </div>
 //           </div>
-//         </div>
-//         <div className="flex items-center gap-2">
-//           <div className="flex flex-col gap-1">
-//             <div className="text-xs px-3 py-1 bg-blue-500 bg-opacity-20 border border-blue-500 rounded-full">
-//               💬 {buddy?.interest}
-//             </div>
-//             {buddy?.availabilityComment && (
-//               <div className="text-xs px-3 py-1 bg-purple-500 bg-opacity-20 border border-purple-500 rounded-full max-w-xs truncate">
-//                 "{buddy.availabilityComment}"
-//               </div>
+
+//           {/* Location buttons - Responsive */}
+//           <div className="flex items-center gap-1 flex-shrink-0">
+//             <button
+//               onClick={toggleLocationSharing}
+//               className={`text-xs px-2 py-1.5 rounded-lg font-semibold transition whitespace-nowrap ${
+//                 sharingLocation
+//                   ? "bg-green-500 text-white"
+//                   : "bg-white bg-opacity-10 hover:bg-opacity-20"
+//               }`}
+//             >
+//               {sharingLocation ? "📍" : "📍"}
+//             </button>
+//             {buddyLocation && (
+//               <button
+//                 onClick={openBuddyLocation}
+//                 className="text-xs px-2 py-1.5 bg-purple-600 rounded-lg font-semibold hover:bg-purple-700 transition whitespace-nowrap"
+//               >
+//                 🗺️
+//               </button>
 //             )}
 //           </div>
-//           <button
-//             onClick={toggleLocationSharing}
-//             className={`text-xs px-3 py-2 rounded-lg font-semibold transition ${
-//               sharingLocation
-//                 ? "bg-green-500 text-white"
-//                 : "bg-white bg-opacity-10 hover:bg-opacity-20"
-//             }`}
-//           >
-//             {sharingLocation ? "📍 Sharing..." : "📍 Share Location"}
-//           </button>
-//           {buddyLocation && (
-//             <button
-//               onClick={openBuddyLocation}
-//               className="text-xs px-3 py-2 bg-purple-600 rounded-lg font-semibold hover:bg-purple-700 transition"
-//             >
-//               🗺️ View Live Location
-//             </button>
+//         </div>
+
+//         {/* Info badges - Below on mobile */}
+//         <div className="flex items-center gap-2 mt-2 overflow-x-auto">
+//           <div className="text-xs px-2 py-1 bg-blue-500 bg-opacity-20 border border-blue-500 rounded-full whitespace-nowrap flex-shrink-0">
+//             💬 {buddy?.interest}
+//           </div>
+//           {buddy?.availabilityComment && (
+//             <div className="text-xs px-2 py-1 bg-purple-500 bg-opacity-20 border border-purple-500 rounded-full truncate flex-shrink-0 max-w-[200px]">
+//               "{buddy.availabilityComment}"
+//             </div>
 //           )}
 //         </div>
 //       </div>
@@ -265,13 +265,16 @@
 //         />
 //       )}
 
-//       {/* Warning Banner */}
-//       <div className="bg-red-900 bg-opacity-30 p-2 text-center text-sm border-b border-red-800">
+//       {/* Warning Banner - Fixed */}
+//       <div className="flex-shrink-0 bg-red-900 bg-opacity-30 p-2 text-center text-xs border-b border-red-800">
 //         ⚠️ Messages auto-delete after 1 hour of inactivity
 //       </div>
 
-//       {/* Messages Area */}
-//       <div className="flex-1 overflow-y-auto p-4 space-y-3">
+//       {/* Messages Area - Scrollable */}
+//       <div
+//         className="flex-1 overflow-y-auto p-3 space-y-3"
+//         style={{ WebkitOverflowScrolling: "touch" }}
+//       >
 //         {messages.length === 0 && (
 //           <div className="text-center text-gray-400 mt-12">
 //             <div className="text-5xl mb-3">👋</div>
@@ -290,7 +293,7 @@
 //               }`}
 //             >
 //               <div
-//                 className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
+//                 className={`max-w-[75%] px-4 py-3 rounded-2xl ${
 //                   isCurrentUser
 //                     ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white"
 //                     : "bg-white bg-opacity-10 backdrop-blur-lg text-white"
@@ -324,8 +327,8 @@
 //         <div ref={messagesEndRef} />
 //       </div>
 
-//       {/* Input Area */}
-//       <div className="bg-black bg-opacity-50 backdrop-blur-lg border-t border-purple-500 border-opacity-30">
+//       {/* Input Area - Fixed at Bottom */}
+//       <div className="flex-shrink-0 bg-black bg-opacity-50 backdrop-blur-lg border-t border-purple-500 border-opacity-30 safe-area-bottom">
 //         {/* Quick Replies */}
 //         {showQuickReplies && (
 //           <div className="p-3 border-b border-purple-500 border-opacity-20">
@@ -335,7 +338,7 @@
 //                 <button
 //                   key={index}
 //                   onClick={() => handleQuickReply(reply)}
-//                   className="px-4 py-2 bg-purple-600 bg-opacity-30 border border-purple-500 rounded-xl text-sm hover:bg-opacity-50 transition transform hover:scale-105"
+//                   className="px-3 py-2 bg-purple-600 bg-opacity-30 border border-purple-500 rounded-xl text-sm hover:bg-opacity-50 transition transform hover:scale-105"
 //                 >
 //                   {reply}
 //                 </button>
@@ -344,7 +347,7 @@
 //           </div>
 //         )}
 
-//         <div className="p-4">
+//         <div className="p-3">
 //           <div className="flex space-x-2">
 //             <textarea
 //               value={newMessage}
@@ -352,18 +355,32 @@
 //               onKeyPress={handleKeyPress}
 //               placeholder="Type a message..."
 //               rows="1"
-//               className="flex-1 p-3 bg-white bg-opacity-10 border border-purple-500 border-opacity-30 rounded-xl resize-none focus:outline-none focus:border-purple-500 placeholder-gray-500"
+//               className="flex-1 p-3 bg-white bg-opacity-10 border border-purple-500 border-opacity-30 rounded-xl resize-none focus:outline-none focus:border-purple-500 placeholder-gray-500 max-h-24"
+//               style={{ minHeight: "44px" }}
 //             />
 //             <button
 //               onClick={() => handleSendMessage()}
 //               disabled={!newMessage.trim()}
-//               className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-purple-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+//               className="px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-purple-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+//               style={{ minHeight: "44px" }}
 //             >
 //               Send
 //             </button>
 //           </div>
 //         </div>
 //       </div>
+
+//       <style>{`
+//         .safe-area-bottom {
+//           padding-bottom: env(safe-area-inset-bottom);
+//         }
+
+//         @supports (padding: max(0px)) {
+//           .safe-area-bottom {
+//             padding-bottom: max(12px, env(safe-area-inset-bottom));
+//           }
+//         }
+//       `}</style>
 //     </div>
 //   );
 // }
@@ -377,6 +394,7 @@ export default function Chat() {
   const location = useLocation();
   const navigate = useNavigate();
   const buddy = location.state?.buddy;
+  const buddyType = location.state?.buddyType || "tea"; // Default to tea if not specified
 
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
@@ -390,11 +408,10 @@ export default function Chat() {
   const typingTimeoutRef = useRef(null);
   const locationIntervalRef = useRef(null);
 
-  const quickReplies = [
-    "Hi! 👋",
-    "Let's catch up! ☕",
-    "When are you free? 🕐",
-  ];
+  const quickReplies =
+    buddyType === "tea"
+      ? ["Hi! 👋", "Let's catch up! ☕", "When are you free? 🕐"]
+      : ["Hey! 🍽️", "Let's grab food! 🍕", "Where should we meet? 📍"];
 
   useEffect(() => {
     if (!buddy) {
@@ -413,18 +430,15 @@ export default function Chat() {
 
     setCurrentUser(user);
 
-    // Connect to socket
     socketService.connect(token);
     socketService.joinRoom(roomId);
 
-    // Load previous messages
     socketService.onPreviousMessages((msgs) => {
       setMessages(msgs);
       if (msgs.length > 0) {
         setShowQuickReplies(false);
       }
 
-      // Mark messages as read when opening chat
       const token = localStorage.getItem("token");
       import("../services/api").then(({ default: API }) => {
         API.post(
@@ -441,14 +455,12 @@ export default function Chat() {
       });
     });
 
-    // Listen for new messages
     socketService.onReceiveMessage((msg) => {
       setMessages((prev) => [...prev, msg]);
       setShowQuickReplies(false);
       window.dispatchEvent(new Event("message-update"));
     });
 
-    // Typing indicators
     socketService.onUserTyping(() => {
       setIsTyping(true);
     });
@@ -457,7 +469,6 @@ export default function Chat() {
       setIsTyping(false);
     });
 
-    // Listen for location updates
     socketService.socket?.on("location-update", (data) => {
       if (data.userId === buddy._id) {
         setBuddyLocation(data.location);
@@ -492,7 +503,6 @@ export default function Chat() {
 
   const handleTyping = (e) => {
     setNewMessage(e.target.value);
-
     socketService.emitTyping(roomId);
 
     if (typingTimeoutRef.current) {
@@ -565,6 +575,28 @@ export default function Chat() {
     }
   };
 
+  // Get buddy type badge colors
+  const getBuddyTypeColors = () => {
+    if (buddyType === "food") {
+      return {
+        bg: "bg-orange-500",
+        text: "text-orange-300",
+        border: "border-orange-500",
+        icon: "🍽️",
+        label: "Food Buddy",
+      };
+    }
+    return {
+      bg: "bg-purple-500",
+      text: "text-purple-300",
+      border: "border-purple-500",
+      icon: "☕",
+      label: "Tea Buddy",
+    };
+  };
+
+  const colors = getBuddyTypeColors();
+
   return (
     <div className="fixed inset-0 flex flex-col bg-gradient-to-br from-purple-900 via-black to-blue-900 text-white">
       {/* Header - Fixed */}
@@ -585,6 +617,7 @@ export default function Chat() {
                 <h2 className="font-bold text-sm truncate">{buddy?.name}</h2>
                 <p className="text-xs text-purple-300 truncate">
                   {buddy?.profession}
+                  {buddy?.professionDetails && ` • ${buddy.professionDetails}`}
                 </p>
               </div>
             </div>
@@ -615,9 +648,39 @@ export default function Chat() {
 
         {/* Info badges - Below on mobile */}
         <div className="flex items-center gap-2 mt-2 overflow-x-auto">
-          <div className="text-xs px-2 py-1 bg-blue-500 bg-opacity-20 border border-blue-500 rounded-full whitespace-nowrap flex-shrink-0">
-            💬 {buddy?.interest}
+          {/* Buddy Type Badge */}
+          <div
+            className={`text-xs px-2 py-1 ${colors.bg} bg-opacity-20 border ${colors.border} rounded-full whitespace-nowrap flex-shrink-0`}
+          >
+            {colors.icon} {colors.label}
           </div>
+
+          {/* Interest/Food Preference Badge */}
+          {buddyType === "tea" && buddy?.interest && (
+            <div className="text-xs px-2 py-1 bg-blue-500 bg-opacity-20 border border-blue-500 rounded-full whitespace-nowrap flex-shrink-0">
+              💬 {buddy.interest}
+            </div>
+          )}
+
+          {buddyType === "food" && (
+            <>
+              {buddy?.foodPreference && (
+                <div className="text-xs px-2 py-1 bg-green-500 bg-opacity-20 border border-green-500 rounded-full whitespace-nowrap flex-shrink-0">
+                  {buddy.foodPreference === "Veg" && "🥗 Veg"}
+                  {buddy.foodPreference === "Non-Veg" && "🍗 Non-Veg"}
+                  {buddy.foodPreference === "Both" && "🍽️ Both"}
+                </div>
+              )}
+              {buddy?.foodMode && (
+                <div className="text-xs px-2 py-1 bg-blue-500 bg-opacity-20 border border-blue-500 rounded-full whitespace-nowrap flex-shrink-0">
+                  {buddy.foodMode === "Restaurant" && "🟢 Restaurant"}
+                  {buddy.foodMode === "Online" && "🔵 Online"}
+                  {buddy.foodMode === "Both" && "🟣 Both"}
+                </div>
+              )}
+            </>
+          )}
+
           {buddy?.availabilityComment && (
             <div className="text-xs px-2 py-1 bg-purple-500 bg-opacity-20 border border-purple-500 rounded-full truncate flex-shrink-0 max-w-[200px]">
               "{buddy.availabilityComment}"
