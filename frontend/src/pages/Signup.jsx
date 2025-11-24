@@ -1,37 +1,18 @@
 // import { useState } from "react";
 // import { useNavigate } from "react-router-dom";
-// import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
-// import { auth } from "../firebaseConfig";
 // import API from "../services/api";
 
 // export default function Signup() {
-//   const [phone, setPhone] = useState("");
+//   const [email, setEmail] = useState("");
 //   const [password, setPassword] = useState("");
 //   const [otp, setOtp] = useState("");
 //   const [otpSent, setOtpSent] = useState(false);
 //   const [loading, setLoading] = useState(false);
-//   const [confirmationResult, setConfirmationResult] = useState(null);
 //   const navigate = useNavigate();
 
-//   // Initialize reCAPTCHA
-//   const setupRecaptcha = () => {
-//     if (!window.recaptchaVerifier) {
-//       window.recaptchaVerifier = new RecaptchaVerifier(
-//         auth,
-//         "recaptcha-container",
-//         {
-//           size: "invisible",
-//           callback: () => {
-//             console.log("reCAPTCHA verified");
-//           },
-//         }
-//       );
-//     }
-//   };
-
 //   const handleSendOTP = async () => {
-//     if (!phone || !password) {
-//       alert("Please enter phone number and password");
+//     if (!email || !password) {
+//       alert("Please enter email and password");
 //       return;
 //     }
 
@@ -40,27 +21,13 @@
 //       return;
 //     }
 
-//     // Format phone number with country code
-//     const formattedPhone = phone.startsWith("+91") ? phone : `+91${phone}`;
-
 //     setLoading(true);
 //     try {
-//       setupRecaptcha();
-//       const appVerifier = window.recaptchaVerifier;
-
-//       const result = await signInWithPhoneNumber(
-//         auth,
-//         formattedPhone,
-//         appVerifier
-//       );
-
-//       setConfirmationResult(result);
+//       await API.post("/auth/send-otp", { email });
 //       setOtpSent(true);
-//       alert("OTP sent to your phone!");
+//       alert("OTP sent to your email!");
 //     } catch (err) {
-//       console.error("OTP send error:", err);
-//       alert(err.message || "Failed to send OTP");
-//       window.recaptchaVerifier = null;
+//       alert(err.response?.data?.msg || "Failed to send OTP");
 //     } finally {
 //       setLoading(false);
 //     }
@@ -74,18 +41,10 @@
 
 //     setLoading(true);
 //     try {
-//       // Verify OTP with Firebase
-//       const result = await confirmationResult.confirm(otp);
-//       const firebaseToken = await result.user.getIdToken();
-
-//       // Format phone for backend
-//       const formattedPhone = phone.startsWith("+91") ? phone : `+91${phone}`;
-
-//       // Send to backend for user creation
-//       const { data } = await API.post("/auth/signup", {
-//         phone: formattedPhone,
+//       const { data } = await API.post("/auth/verify-signup", {
+//         email,
 //         password,
-//         firebaseToken,
+//         otp,
 //       });
 
 //       localStorage.setItem("token", data.token);
@@ -94,17 +53,11 @@
 //         JSON.stringify({ ...data.user, isNewUser: true })
 //       );
 
-//       alert("Signup successful!");
-
-//       // Trigger auth change event for navbar update
+//       // alert("Signup successful!");
 //       window.dispatchEvent(new Event("auth-change"));
-
 //       navigate("/dashboard");
 //     } catch (err) {
-//       console.error("Verification error:", err);
-//       alert(
-//         err.response?.data?.msg || err.message || "OTP verification failed"
-//       );
+//       alert(err.response?.data?.msg || "OTP verification failed");
 //     } finally {
 //       setLoading(false);
 //     }
@@ -112,14 +65,13 @@
 
 //   return (
 //     <div className="h-screen flex flex-col justify-center items-center bg-black text-white">
-//       <div id="recaptcha-container"></div>
-
 //       <h1 className="text-3xl mb-6 font-semibold">Create Account</h1>
 //       <div className="w-80">
 //         <input
-//           placeholder="Phone number (10 digits)"
-//           value={phone}
-//           onChange={(e) => setPhone(e.target.value)}
+//           placeholder="Email address"
+//           type="email"
+//           value={email}
+//           onChange={(e) => setEmail(e.target.value)}
 //           disabled={otpSent}
 //           className="w-full mb-4 p-2 bg-gray-900 border border-gray-700 rounded"
 //         />
@@ -157,16 +109,6 @@
 //             >
 //               {loading ? "Verifying..." : "Verify OTP"}
 //             </button>
-//             <button
-//               onClick={() => {
-//                 setOtpSent(false);
-//                 setOtp("");
-//                 window.recaptchaVerifier = null;
-//               }}
-//               className="w-full mt-2 p-2 bg-gray-700 text-white rounded hover:bg-gray-600"
-//             >
-//               Change Phone Number
-//             </button>
 //           </>
 //         )}
 //       </div>
@@ -176,6 +118,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
+import TermsConditionsModal from "../components/TermsConditionsModal";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
@@ -183,6 +126,8 @@ export default function Signup() {
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const navigate = useNavigate();
 
   const handleSendOTP = async () => {
@@ -193,6 +138,11 @@ export default function Signup() {
 
     if (password.length < 6) {
       alert("Password must be at least 6 characters");
+      return;
+    }
+
+    if (!acceptedTerms) {
+      alert("Please accept the Terms & Conditions to continue");
       return;
     }
 
@@ -222,13 +172,15 @@ export default function Signup() {
         otp,
       });
 
+      // Clear any old cache
+      localStorage.clear();
+
       localStorage.setItem("token", data.token);
       localStorage.setItem(
         "user",
         JSON.stringify({ ...data.user, isNewUser: true })
       );
 
-      // alert("Signup successful!");
       window.dispatchEvent(new Event("auth-change"));
       navigate("/dashboard");
     } catch (err) {
@@ -239,16 +191,16 @@ export default function Signup() {
   };
 
   return (
-    <div className="h-screen flex flex-col justify-center items-center bg-black text-white">
+    <div className="h-screen flex flex-col justify-center items-center bg-black text-white px-4">
       <h1 className="text-3xl mb-6 font-semibold">Create Account</h1>
-      <div className="w-80">
+      <div className="w-full max-w-sm">
         <input
           placeholder="Email address"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={otpSent}
-          className="w-full mb-4 p-2 bg-gray-900 border border-gray-700 rounded"
+          className="w-full mb-4 p-3 bg-gray-900 border border-gray-700 rounded focus:outline-none focus:border-purple-500"
         />
         {!otpSent && (
           <>
@@ -257,36 +209,93 @@ export default function Signup() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full mb-4 p-2 bg-gray-900 border border-gray-700 rounded"
+              className="w-full mb-4 p-3 bg-gray-900 border border-gray-700 rounded focus:outline-none focus:border-purple-500"
             />
+
+            {/* Terms & Conditions Checkbox */}
+            <div className="mb-4 flex items-start gap-2">
+              <input
+                type="checkbox"
+                id="terms"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 w-4 h-4 cursor-pointer"
+              />
+              <label
+                htmlFor="terms"
+                className="text-sm text-gray-400 leading-relaxed"
+              >
+                I accept the{" "}
+                <button
+                  type="button"
+                  onClick={() => setShowTermsModal(true)}
+                  className="text-purple-400 hover:text-purple-300 underline font-semibold"
+                >
+                  Terms & Conditions
+                </button>{" "}
+                and confirm I am at least 18 years old
+              </label>
+            </div>
+
             <button
               onClick={handleSendOTP}
-              disabled={loading}
-              className="w-full p-2 bg-white text-black rounded hover:bg-gray-200 disabled:opacity-50"
+              disabled={loading || !acceptedTerms}
+              className="w-full p-3 bg-white text-black rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition flex items-center justify-center gap-2"
             >
+              {loading && <span className="animate-spin">🔄</span>}
               {loading ? "Sending..." : "Send OTP"}
             </button>
           </>
         )}
         {otpSent && (
           <>
+            <div className="mb-4 p-3 bg-purple-900 bg-opacity-30 border border-purple-500 rounded">
+              <p className="text-sm text-purple-200">
+                ✉️ OTP sent to <strong>{email}</strong>
+              </p>
+            </div>
             <input
               placeholder="Enter 6-digit OTP"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
               maxLength={6}
-              className="w-full mb-4 p-2 bg-gray-900 border border-gray-700 rounded"
+              className="w-full mb-4 p-3 bg-gray-900 border border-gray-700 rounded focus:outline-none focus:border-purple-500 text-center text-2xl tracking-widest"
             />
             <button
               onClick={handleVerifyOTP}
-              disabled={loading}
-              className="w-full p-2 bg-white text-black rounded hover:bg-gray-200 disabled:opacity-50"
+              disabled={loading || !otp}
+              className="w-full p-3 bg-white text-black rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition flex items-center justify-center gap-2"
             >
+              {loading && <span className="animate-spin">🔄</span>}
               {loading ? "Verifying..." : "Verify OTP"}
+            </button>
+            <button
+              onClick={() => {
+                setOtpSent(false);
+                setOtp("");
+              }}
+              className="w-full mt-3 p-3 bg-gray-700 text-white rounded hover:bg-gray-600 transition"
+            >
+              Change Email
             </button>
           </>
         )}
+
+        <p className="mt-6 text-center text-sm text-gray-400">
+          Already have an account?{" "}
+          <button
+            onClick={() => navigate("/login")}
+            className="text-purple-400 hover:text-purple-300 underline font-semibold"
+          >
+            Login
+          </button>
+        </p>
       </div>
+
+      {/* Terms & Conditions Modal */}
+      {showTermsModal && (
+        <TermsConditionsModal onClose={() => setShowTermsModal(false)} />
+      )}
     </div>
   );
 }

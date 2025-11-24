@@ -4,10 +4,11 @@
 // export default function ProfilePopup({ onClose, onComplete }) {
 //   const [name, setName] = useState("");
 //   const [profession, setProfession] = useState("");
+//   const [professionDetails, setProfessionDetails] = useState("");
 //   const [interest, setInterest] = useState("");
 //   const [loading, setLoading] = useState(false);
 //   const [isEditing, setIsEditing] = useState(false);
-
+//   const [selectedInterests, setSelectedInterests] = useState([]);
 //   const professions = [
 //     "Businessman",
 //     "Student",
@@ -37,6 +38,7 @@
 //     // Load existing user data
 //     const loadUserData = async () => {
 //       const token = localStorage.getItem("token");
+
 //       if (!token) return;
 
 //       try {
@@ -47,7 +49,8 @@
 //         if (data.user) {
 //           setName(data.user.name || "");
 //           setProfession(data.user.profession || "");
-//           setInterest(data.user.interest || "");
+//           setProfessionDetails(data.user.professionDetails || "");
+//           setSelectedInterests(data.user.interests || []);
 //           setIsEditing(!!data.user.profileCompleted);
 //         }
 //       } catch (err) {
@@ -59,8 +62,13 @@
 //   }, []);
 
 //   const handleSubmit = async () => {
-//     if (!name || !profession || !interest) {
-//       alert("Please fill all fields");
+//     if (!name || !profession || selectedInterests.length === 0) {
+//       alert("Please fill all required fields");
+//       return;
+//     }
+
+//     if (profession !== "Other" && !professionDetails) {
+//       alert("Please provide profession details");
 //       return;
 //     }
 
@@ -74,7 +82,7 @@
 //     try {
 //       const { data } = await API.post(
 //         "/profile/save",
-//         { name, profession, interest },
+//         { name, profession, professionDetails, interests: selectedInterests },
 //         { headers: { Authorization: `Bearer ${token}` } }
 //       );
 
@@ -94,6 +102,29 @@
 //       alert(err.response?.data?.msg || "Error saving profile");
 //     } finally {
 //       setLoading(false);
+//     }
+//   };
+
+//   const getProfessionDetailsPlaceholder = () => {
+//     switch (profession) {
+//       case "Corporate Employee":
+//         return "Company name (e.g., Google, Microsoft)";
+//       case "Student":
+//         return "College/University name (e.g., IIT Delhi)";
+//       case "Businessman":
+//         return "Business type (e.g., Restaurant, E-commerce)";
+//       case "Freelancer":
+//         return "Your specialization (e.g., Web Developer)";
+//       case "Teacher":
+//         return "Subject/Institution (e.g., Math, ABC School)";
+//       case "Doctor":
+//         return "Specialization (e.g., Cardiologist)";
+//       case "Engineer":
+//         return "Field (e.g., Software, Mechanical)";
+//       case "Artist":
+//         return "Art form (e.g., Painting, Music)";
+//       default:
+//         return "Details about your profession";
 //     }
 //   };
 
@@ -132,7 +163,10 @@
 //               </label>
 //               <select
 //                 value={profession}
-//                 onChange={(e) => setProfession(e.target.value)}
+//                 onChange={(e) => {
+//                   setProfession(e.target.value);
+//                   setProfessionDetails(""); // Reset details when profession changes
+//                 }}
 //                 className="w-full p-4 bg-black border border-purple-500 border-opacity-30 rounded-xl focus:outline-none focus:border-purple-500 text-white"
 //               >
 //                 <option value="">Select Profession</option>
@@ -144,22 +178,56 @@
 //               </select>
 //             </div>
 
+//             {/* Profession Details */}
+//             {profession && profession !== "Other" && (
+//               <div>
+//                 <label className="block mb-2 text-sm font-semibold text-gray-300">
+//                   {profession === "Corporate Employee" && "Company Name"}
+//                   {profession === "Student" && "College/University"}
+//                   {profession === "Businessman" && "Business Type"}
+//                   {profession === "Freelancer" && "Specialization"}
+//                   {profession === "Teacher" && "Subject/Institution"}
+//                   {profession === "Doctor" && "Specialization"}
+//                   {profession === "Engineer" && "Field"}
+//                   {profession === "Artist" && "Art Form"}
+//                 </label>
+//                 <input
+//                   type="text"
+//                   placeholder={getProfessionDetailsPlaceholder()}
+//                   value={professionDetails}
+//                   onChange={(e) => setProfessionDetails(e.target.value)}
+//                   className="w-full p-4 bg-black border border-purple-500 border-opacity-30 rounded-xl focus:outline-none focus:border-purple-500 text-white"
+//                 />
+//               </div>
+//             )}
+
 //             <div>
 //               <label className="block mb-2 text-sm font-semibold text-gray-300">
-//                 Interest to Talk About
+//                 Interests (Select multiple)
 //               </label>
-//               <select
-//                 value={interest}
-//                 onChange={(e) => setInterest(e.target.value)}
-//                 className="w-full p-4 bg-black border border-purple-500 border-opacity-30 rounded-xl focus:outline-none focus:border-purple-500 text-white"
-//               >
-//                 <option value="">Select Interest</option>
+//               <div className="grid grid-cols-2 gap-2">
 //                 {interests.map((i) => (
-//                   <option key={i} value={i}>
+//                   <button
+//                     key={i}
+//                     onClick={() => {
+//                       if (selectedInterests.includes(i)) {
+//                         setSelectedInterests(
+//                           selectedInterests.filter((int) => int !== i)
+//                         );
+//                       } else {
+//                         setSelectedInterests([...selectedInterests, i]);
+//                       }
+//                     }}
+//                     className={`p-3 rounded-xl text-sm font-semibold transition ${
+//                       selectedInterests.includes(i)
+//                         ? "bg-purple-600 text-white border-2 border-purple-400"
+//                         : "bg-black border border-purple-500 border-opacity-30 text-gray-400"
+//                     }`}
+//                   >
 //                     {i}
-//                   </option>
+//                   </button>
 //                 ))}
-//               </select>
+//               </div>
 //             </div>
 //           </div>
 
@@ -195,10 +263,11 @@ export default function ProfilePopup({ onClose, onComplete }) {
   const [name, setName] = useState("");
   const [profession, setProfession] = useState("");
   const [professionDetails, setProfessionDetails] = useState("");
-  const [interest, setInterest] = useState("");
+  const [selectedInterests, setSelectedInterests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedInterests, setSelectedInterests] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true); // NEW: Loading state for data fetch
+
   const professions = [
     "Businessman",
     "Student",
@@ -225,31 +294,36 @@ export default function ProfilePopup({ onClose, onComplete }) {
   ];
 
   useEffect(() => {
-    // Load existing user data
-    const loadUserData = async () => {
-      const token = localStorage.getItem("token");
-
-      if (!token) return;
-
-      try {
-        const { data } = await API.get("/profile/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (data.user) {
-          setName(data.user.name || "");
-          setProfession(data.user.profession || "");
-          setProfessionDetails(data.user.professionDetails || "");
-          setSelectedInterests(data.user.interests || []);
-          setIsEditing(!!data.user.profileCompleted);
-        }
-      } catch (err) {
-        console.error("Error loading user data:", err);
-      }
-    };
-
     loadUserData();
   }, []);
+
+  const loadUserData = async () => {
+    setDataLoading(true);
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setDataLoading(false);
+      return;
+    }
+
+    try {
+      const { data } = await API.get("/profile/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (data.user) {
+        setName(data.user.name || "");
+        setProfession(data.user.profession || "");
+        setProfessionDetails(data.user.professionDetails || "");
+        setSelectedInterests(data.user.interests || []);
+        setIsEditing(!!data.user.profileCompleted);
+      }
+    } catch (err) {
+      console.error("Error loading user data:", err);
+    } finally {
+      setDataLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!name || !profession || selectedInterests.length === 0) {
@@ -282,7 +356,6 @@ export default function ProfilePopup({ onClose, onComplete }) {
           : "Profile saved successfully!"
       );
 
-      // Update user in localStorage
       const updatedUser = { ...data.user, isNewUser: false };
       localStorage.setItem("user", JSON.stringify(updatedUser));
 
@@ -333,113 +406,121 @@ export default function ProfilePopup({ onClose, onComplete }) {
               : "Tell us a bit about yourself"}
           </p>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block mb-2 text-sm font-semibold text-gray-300">
-                Your Name
-              </label>
-              <input
-                type="text"
-                placeholder="Enter your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full p-4 bg-black border border-purple-500 border-opacity-30 rounded-xl focus:outline-none focus:border-purple-500 text-white"
-              />
+          {/* Loading State */}
+          {dataLoading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="animate-spin text-6xl mb-4">🔄</div>
+              <p className="text-gray-400">Loading your profile...</p>
             </div>
-
-            <div>
-              <label className="block mb-2 text-sm font-semibold text-gray-300">
-                Profession
-              </label>
-              <select
-                value={profession}
-                onChange={(e) => {
-                  setProfession(e.target.value);
-                  setProfessionDetails(""); // Reset details when profession changes
-                }}
-                className="w-full p-4 bg-black border border-purple-500 border-opacity-30 rounded-xl focus:outline-none focus:border-purple-500 text-white"
-              >
-                <option value="">Select Profession</option>
-                {professions.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Profession Details */}
-            {profession && profession !== "Other" && (
+          ) : (
+            <div className="space-y-4">
               <div>
                 <label className="block mb-2 text-sm font-semibold text-gray-300">
-                  {profession === "Corporate Employee" && "Company Name"}
-                  {profession === "Student" && "College/University"}
-                  {profession === "Businessman" && "Business Type"}
-                  {profession === "Freelancer" && "Specialization"}
-                  {profession === "Teacher" && "Subject/Institution"}
-                  {profession === "Doctor" && "Specialization"}
-                  {profession === "Engineer" && "Field"}
-                  {profession === "Artist" && "Art Form"}
+                  Your Name
                 </label>
                 <input
                   type="text"
-                  placeholder={getProfessionDetailsPlaceholder()}
-                  value={professionDetails}
-                  onChange={(e) => setProfessionDetails(e.target.value)}
+                  placeholder="Enter your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   className="w-full p-4 bg-black border border-purple-500 border-opacity-30 rounded-xl focus:outline-none focus:border-purple-500 text-white"
                 />
               </div>
-            )}
 
-            <div>
-              <label className="block mb-2 text-sm font-semibold text-gray-300">
-                Interests (Select multiple)
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {interests.map((i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      if (selectedInterests.includes(i)) {
-                        setSelectedInterests(
-                          selectedInterests.filter((int) => int !== i)
-                        );
-                      } else {
-                        setSelectedInterests([...selectedInterests, i]);
-                      }
-                    }}
-                    className={`p-3 rounded-xl text-sm font-semibold transition ${
-                      selectedInterests.includes(i)
-                        ? "bg-purple-600 text-white border-2 border-purple-400"
-                        : "bg-black border border-purple-500 border-opacity-30 text-gray-400"
-                    }`}
-                  >
-                    {i}
-                  </button>
-                ))}
+              <div>
+                <label className="block mb-2 text-sm font-semibold text-gray-300">
+                  Profession
+                </label>
+                <select
+                  value={profession}
+                  onChange={(e) => {
+                    setProfession(e.target.value);
+                    setProfessionDetails("");
+                  }}
+                  className="w-full p-4 bg-black border border-purple-500 border-opacity-30 rounded-xl focus:outline-none focus:border-purple-500 text-white"
+                >
+                  <option value="">Select Profession</option>
+                  {professions.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              {profession && profession !== "Other" && (
+                <div>
+                  <label className="block mb-2 text-sm font-semibold text-gray-300">
+                    {profession === "Corporate Employee" && "Company Name"}
+                    {profession === "Student" && "College/University"}
+                    {profession === "Businessman" && "Business Type"}
+                    {profession === "Freelancer" && "Specialization"}
+                    {profession === "Teacher" && "Subject/Institution"}
+                    {profession === "Doctor" && "Specialization"}
+                    {profession === "Engineer" && "Field"}
+                    {profession === "Artist" && "Art Form"}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={getProfessionDetailsPlaceholder()}
+                    value={professionDetails}
+                    onChange={(e) => setProfessionDetails(e.target.value)}
+                    className="w-full p-4 bg-black border border-purple-500 border-opacity-30 rounded-xl focus:outline-none focus:border-purple-500 text-white"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block mb-2 text-sm font-semibold text-gray-300">
+                  Interests (Select multiple)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {interests.map((i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        if (selectedInterests.includes(i)) {
+                          setSelectedInterests(
+                            selectedInterests.filter((int) => int !== i)
+                          );
+                        } else {
+                          setSelectedInterests([...selectedInterests, i]);
+                        }
+                      }}
+                      className={`p-3 rounded-xl text-sm font-semibold transition ${
+                        selectedInterests.includes(i)
+                          ? "bg-purple-600 text-white border-2 border-purple-400"
+                          : "bg-black border border-purple-500 border-opacity-30 text-gray-400"
+                      }`}
+                    >
+                      {i}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="w-full mt-6 p-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-bold text-lg shadow-lg hover:shadow-purple-500/50 transition disabled:opacity-50 transform hover:scale-105 flex items-center justify-center gap-2"
+              >
+                {loading && <span className="animate-spin">🔄</span>}
+                {loading
+                  ? "Saving..."
+                  : isEditing
+                  ? "Update Profile"
+                  : "Save Profile"}
+              </button>
+
+              {isEditing && (
+                <button
+                  onClick={onClose}
+                  className="w-full mt-3 p-3 bg-gray-700 rounded-xl font-semibold hover:bg-gray-600 transition"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
-          </div>
-
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full mt-6 p-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-bold text-lg shadow-lg hover:shadow-purple-500/50 transition disabled:opacity-50 transform hover:scale-105"
-          >
-            {loading
-              ? "Saving..."
-              : isEditing
-              ? "Update Profile"
-              : "Save Profile"}
-          </button>
-
-          {isEditing && (
-            <button
-              onClick={onClose}
-              className="w-full mt-3 p-3 bg-gray-700 rounded-xl font-semibold hover:bg-gray-600 transition"
-            >
-              Cancel
-            </button>
           )}
         </div>
       </div>
