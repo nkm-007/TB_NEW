@@ -2,19 +2,20 @@
 // import User from "../models/User.js";
 // import jwt from "jsonwebtoken";
 
-// // Send friend request
+// // Send friend request - NOW INCLUDES BUDDY TYPE
 // export const sendFriendRequest = async (req, res) => {
 //   const token = req.headers.authorization?.split(" ")[1];
 //   if (!token) return res.status(401).json({ msg: "No token" });
 
 //   try {
 //     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     const { toUserId } = req.body;
+//     const { toUserId, buddyType = "tea" } = req.body; // NEW: Accept buddyType
 
-//     // Check if request already exists
+//     // Check if request already exists for this buddy type
 //     const existingRequest = await FriendRequest.findOne({
 //       from: decoded.id,
 //       to: toUserId,
+//       buddyType: buddyType, // NEW: Check for same buddy type
 //       status: { $in: ["pending", "accepted"] },
 //     });
 
@@ -22,19 +23,20 @@
 //       return res.status(400).json({ msg: "Request already sent or accepted" });
 //     }
 
-//     // Create room ID
-//     const roomId = [decoded.id, toUserId].sort().join("-");
+//     // Create room ID with buddy type suffix
+//     const roomId = [decoded.id, toUserId].sort().join("-") + `-${buddyType}`;
 
 //     const friendRequest = await FriendRequest.create({
 //       from: decoded.id,
 //       to: toUserId,
 //       roomId,
+//       buddyType, // NEW: Store buddy type
 //     });
 
 //     // Populate sender info
 //     const populatedRequest = await FriendRequest.findById(
 //       friendRequest._id
-//     ).populate("from", "name profession interest");
+//     ).populate("from", "name profession interests interest");
 
 //     // Emit socket event to receiver
 //     req.app.get("io").emit(`friend-request-${toUserId}`, {
@@ -51,7 +53,7 @@
 //   }
 // };
 
-// // Get pending friend requests (received)
+// // Get pending friend requests
 // export const getPendingRequests = async (req, res) => {
 //   const token = req.headers.authorization?.split(" ")[1];
 //   if (!token) return res.status(401).json({ msg: "No token" });
@@ -63,7 +65,7 @@
 //       to: decoded.id,
 //       status: "pending",
 //     })
-//       .populate("from", "name profession interest")
+//       .populate("from", "name profession interests interest")
 //       .sort({ createdAt: -1 });
 
 //     res.json({ requests });
@@ -100,11 +102,13 @@
 //     req.app.get("io").emit(`request-accepted-${request.from}`, {
 //       acceptedBy: decoded.id,
 //       roomId: request.roomId,
+//       buddyType: request.buddyType, // NEW: Include buddy type
 //     });
 
 //     res.json({
 //       msg: "Friend request accepted",
 //       roomId: request.roomId,
+//       buddyType: request.buddyType, // NEW: Return buddy type
 //     });
 //   } catch (err) {
 //     console.error("Accept friend request error:", err);
@@ -142,19 +146,19 @@
 //   }
 // };
 
-// // Check if users are friends (accepted request exists)
+// // Check friend status - NOW CHECKS BY BUDDY TYPE
 // export const checkFriendStatus = async (req, res) => {
 //   const token = req.headers.authorization?.split(" ")[1];
 //   if (!token) return res.status(401).json({ msg: "No token" });
 
 //   try {
 //     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     const { userId } = req.query;
+//     const { userId, buddyType = "tea" } = req.query; // NEW: Accept buddyType
 
 //     const request = await FriendRequest.findOne({
 //       $or: [
-//         { from: decoded.id, to: userId },
-//         { from: userId, to: decoded.id },
+//         { from: decoded.id, to: userId, buddyType },
+//         { from: userId, to: decoded.id, buddyType },
 //       ],
 //     });
 
@@ -162,6 +166,7 @@
 //       status: request ? request.status : "none",
 //       requestId: request?._id,
 //       canChat: request?.status === "accepted",
+//       buddyType: request?.buddyType,
 //     });
 //   } catch (err) {
 //     res.status(500).json({ msg: err.message });
@@ -171,20 +176,20 @@ import FriendRequest from "../models/FriendRequest.js";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
-// Send friend request - NOW INCLUDES BUDDY TYPE
+// Send friend request - NOW INCLUDES BUDDY TYPE and SOCKET NOTIFICATION
 export const sendFriendRequest = async (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ msg: "No token" });
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const { toUserId, buddyType = "tea" } = req.body; // NEW: Accept buddyType
+    const { toUserId, buddyType = "tea" } = req.body;
 
     // Check if request already exists for this buddy type
     const existingRequest = await FriendRequest.findOne({
       from: decoded.id,
       to: toUserId,
-      buddyType: buddyType, // NEW: Check for same buddy type
+      buddyType: buddyType,
       status: { $in: ["pending", "accepted"] },
     });
 
@@ -199,7 +204,7 @@ export const sendFriendRequest = async (req, res) => {
       from: decoded.id,
       to: toUserId,
       roomId,
-      buddyType, // NEW: Store buddy type
+      buddyType,
     });
 
     // Populate sender info
@@ -207,10 +212,14 @@ export const sendFriendRequest = async (req, res) => {
       friendRequest._id
     ).populate("from", "name profession interests interest");
 
-    // Emit socket event to receiver
-    req.app.get("io").emit(`friend-request-${toUserId}`, {
-      request: populatedRequest,
-    });
+    // Emit socket event to receiver using io from app
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user-${toUserId}`).emit("friend-request-received", {
+        fromUser: populatedRequest.from,
+        buddyType: buddyType,
+      });
+    }
 
     res.json({
       msg: "Friend request sent",
@@ -234,7 +243,11 @@ export const getPendingRequests = async (req, res) => {
       to: decoded.id,
       status: "pending",
     })
-      .populate("from", "name profession interests interest")
+      .populate({
+        path: "from",
+        select:
+          "name profession professionDetails interests interest foodPreference foodMode cuisine",
+      })
       .sort({ createdAt: -1 });
 
     res.json({ requests });
@@ -268,16 +281,23 @@ export const acceptFriendRequest = async (req, res) => {
     await request.save();
 
     // Emit socket event to sender
-    req.app.get("io").emit(`request-accepted-${request.from}`, {
-      acceptedBy: decoded.id,
-      roomId: request.roomId,
-      buddyType: request.buddyType, // NEW: Include buddy type
-    });
+    const io = req.app.get("io");
+    if (io) {
+      const acceptedByUser = await User.findById(decoded.id).select("name");
+
+      io.to(`user-${request.from}`).emit(
+        "friend-request-accepted-notification",
+        {
+          userName: acceptedByUser.name,
+          buddyType: request.buddyType,
+        }
+      );
+    }
 
     res.json({
       msg: "Friend request accepted",
       roomId: request.roomId,
-      buddyType: request.buddyType, // NEW: Return buddy type
+      buddyType: request.buddyType,
     });
   } catch (err) {
     console.error("Accept friend request error:", err);
@@ -322,7 +342,7 @@ export const checkFriendStatus = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const { userId, buddyType = "tea" } = req.query; // NEW: Accept buddyType
+    const { userId, buddyType = "tea" } = req.query;
 
     const request = await FriendRequest.findOne({
       $or: [

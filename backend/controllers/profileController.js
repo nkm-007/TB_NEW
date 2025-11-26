@@ -1,26 +1,35 @@
 // import User from "../models/User.js";
 // import jwt from "jsonwebtoken";
 
-// // Save/Update profile (Tea Buddy)
+// // Save/Update profile (Tea Buddy) - NOW SUPPORTS MULTIPLE INTERESTS
 // export const saveProfile = async (req, res) => {
 //   const token = req.headers.authorization?.split(" ")[1];
 //   if (!token) return res.status(401).json({ msg: "No token" });
 
 //   try {
 //     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     const { name, profession, professionDetails, interest } = req.body;
+//     const { name, profession, professionDetails, interests } = req.body;
 
-//     const user = await User.findByIdAndUpdate(
-//       decoded.id,
-//       {
-//         name,
-//         profession,
-//         professionDetails: professionDetails || "",
-//         interest,
-//         profileCompleted: true,
-//       },
-//       { new: true }
-//     );
+//     // Support both single interest (backward compatibility) and multiple interests
+//     const updateData = {
+//       name,
+//       profession,
+//       professionDetails: professionDetails || "",
+//       profileCompleted: true,
+//     };
+
+//     // If interests is an array, use it; otherwise convert single interest to array
+//     if (Array.isArray(interests)) {
+//       updateData.interests = interests;
+//       updateData.interest = interests[0]; // Keep first interest for backward compatibility
+//     } else if (interests) {
+//       updateData.interests = [interests];
+//       updateData.interest = interests;
+//     }
+
+//     const user = await User.findByIdAndUpdate(decoded.id, updateData, {
+//       new: true,
+//     });
 
 //     res.json({
 //       msg: "Profile updated successfully",
@@ -30,6 +39,7 @@
 //         name: user.name,
 //         profession: user.profession,
 //         professionDetails: user.professionDetails,
+//         interests: user.interests,
 //         interest: user.interest,
 //         profileCompleted: user.profileCompleted,
 //       },
@@ -209,7 +219,7 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
-// Save/Update profile (Tea Buddy) - NOW SUPPORTS MULTIPLE INTERESTS
+// Save/Update profile (Tea Buddy) - FIXED TO PRESERVE PROFESSIONDETAILS
 export const saveProfile = async (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ msg: "No token" });
@@ -218,25 +228,53 @@ export const saveProfile = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const { name, profession, professionDetails, interests } = req.body;
 
-    // Support both single interest (backward compatibility) and multiple interests
+    // Validation
+    if (!name || !profession) {
+      return res.status(400).json({ msg: "Name and profession are required" });
+    }
+
+    // CRITICAL: Validate professionDetails for non-"Other" professions
+    if (profession !== "Other" && !professionDetails) {
+      return res.status(400).json({
+        msg: `Please provide details about your ${profession.toLowerCase()} profession`,
+      });
+    }
+
     const updateData = {
-      name,
+      name: name.trim(),
       profession,
-      professionDetails: professionDetails || "",
+      // CRITICAL: Always save professionDetails, even if empty string for "Other"
+      professionDetails: professionDetails ? professionDetails.trim() : "",
       profileCompleted: true,
     };
 
-    // If interests is an array, use it; otherwise convert single interest to array
-    if (Array.isArray(interests)) {
+    // Handle interests (both single and multiple)
+    if (Array.isArray(interests) && interests.length > 0) {
       updateData.interests = interests;
-      updateData.interest = interests[0]; // Keep first interest for backward compatibility
+      updateData.interest = interests[0]; // Keep first for backward compatibility
     } else if (interests) {
       updateData.interests = [interests];
       updateData.interest = interests;
     }
 
+    console.log("Saving profile with data:", updateData);
+
     const user = await User.findByIdAndUpdate(decoded.id, updateData, {
       new: true,
+      runValidators: true, // Ensure validators run
+    }).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Verify the data was actually saved
+    console.log("Profile saved successfully:", {
+      userId: user._id,
+      name: user.name,
+      profession: user.profession,
+      professionDetails: user.professionDetails,
+      interests: user.interests,
     });
 
     res.json({
@@ -250,9 +288,15 @@ export const saveProfile = async (req, res) => {
         interests: user.interests,
         interest: user.interest,
         profileCompleted: user.profileCompleted,
+        availableForTea: user.availableForTea,
+        availableForFood: user.availableForFood,
+        foodPreference: user.foodPreference,
+        foodMode: user.foodMode,
+        cuisine: user.cuisine,
       },
     });
   } catch (err) {
+    console.error("Save profile error:", err);
     res.status(500).json({ msg: err.message });
   }
 };
@@ -266,6 +310,12 @@ export const saveFoodProfile = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const { foodPreference, foodMode, cuisine } = req.body;
 
+    if (!foodPreference || !foodMode) {
+      return res
+        .status(400)
+        .json({ msg: "Food preference and mode are required" });
+    }
+
     const user = await User.findByIdAndUpdate(
       decoded.id,
       {
@@ -274,8 +324,12 @@ export const saveFoodProfile = async (req, res) => {
         cuisine: cuisine || "",
         foodProfileCompleted: true,
       },
-      { new: true }
-    );
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
 
     res.json({
       msg: "Food profile updated successfully",
@@ -292,11 +346,12 @@ export const saveFoodProfile = async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("Save food profile error:", err);
     res.status(500).json({ msg: err.message });
   }
 };
 
-// Get user profile
+// Get user profile - ALWAYS return complete data
 export const getProfile = async (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ msg: "No token" });
@@ -305,10 +360,22 @@ export const getProfile = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id).select("-password");
 
-    if (!user) return res.status(404).json({ msg: "User not found" });
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Log for debugging
+    console.log("Fetched user profile:", {
+      userId: user._id,
+      name: user.name,
+      profession: user.profession,
+      professionDetails: user.professionDetails,
+      interests: user.interests,
+    });
 
     res.json({ user });
   } catch (err) {
+    console.error("Get profile error:", err);
     res.status(500).json({ msg: err.message });
   }
 };
@@ -328,11 +395,16 @@ export const toggleAvailability = async (req, res) => {
       { new: true }
     ).select("-password");
 
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
     res.json({
       msg: "Availability updated",
       availableForTea: user.availableForTea,
     });
   } catch (err) {
+    console.error("Toggle availability error:", err);
     res.status(500).json({ msg: err.message });
   }
 };
@@ -352,11 +424,16 @@ export const toggleFoodAvailability = async (req, res) => {
       { new: true }
     ).select("-password");
 
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
     res.json({
       msg: "Food availability updated",
       availableForFood: user.availableForFood,
     });
   } catch (err) {
+    console.error("Toggle food availability error:", err);
     res.status(500).json({ msg: err.message });
   }
 };
@@ -387,12 +464,17 @@ export const updateLocation = async (req, res) => {
       new: true,
     }).select("-password");
 
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
     res.json({
       msg: "Location and comment updated",
       location: user.location,
       availabilityComment: user.availabilityComment,
     });
   } catch (err) {
+    console.error("Update location error:", err);
     res.status(500).json({ msg: err.message });
   }
 };
@@ -415,12 +497,17 @@ export const updateAvailabilityComment = async (req, res) => {
       { new: true }
     ).select("-password");
 
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
     res.json({
       msg: "Comment updated",
       availabilityComment: user.availabilityComment,
       availabilityCommentUpdatedAt: user.availabilityCommentUpdatedAt,
     });
   } catch (err) {
+    console.error("Update comment error:", err);
     res.status(500).json({ msg: err.message });
   }
 };

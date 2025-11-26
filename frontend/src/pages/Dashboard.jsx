@@ -459,7 +459,7 @@ export default function Dashboard() {
     if (buddyMode === "tea") {
       return "Time for meaningful connections ☕";
     }
-    return "Let's share a meal, split the bill! 🍽️";
+    return "Let's share a meal! 🍽️";
   };
 
   const isAvailable = buddyMode === "tea" ? availableForTea : availableForFood;
